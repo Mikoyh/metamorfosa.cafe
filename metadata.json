@@ -1,0 +1,7 @@
+{
+  "name": "Metamorfosa Cafe V3",
+  "description": "A premium eco-friendly food ordering app with RPG gamification, social features, and a high-performance native-like UI.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}
