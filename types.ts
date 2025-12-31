@@ -5,11 +5,19 @@ export interface MenuItem {
   price: number;
   category: string;
   image: string;
+  description?: string; // Added description
   isTopPick?: boolean;
 }
 
 export interface CartItem extends MenuItem {
   quantity: number;
+}
+
+export interface Voucher {
+    id: string;
+    title: string;
+    description: string;
+    costInGold: number;
 }
 
 export interface User {
@@ -19,6 +27,7 @@ export interface User {
   gold: number;
   level: number;
   role: 'Guest' | 'Regular' | 'Elite' | 'Legend';
+  vouchers: Voucher[];
 }
 
 export interface StoreStatus {
@@ -36,4 +45,6 @@ export interface WallNote {
   timestamp: number;
 }
 
-export type Page = 'home' | 'menu' | 'leaderboard' | 'shop' | 'wall';
+export type QueueStatus = 'IDLE' | 'WAITING' | 'COOKING' | 'DELIVERED';
+
+export type Page = 'home' | 'menu' | 'leaderboard' | 'shop' | 'wall' | 'profile';
