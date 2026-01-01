@@ -94,4 +94,30 @@ export const PASTEL_COLORS = [
   '#fbcfe8', // Pink
   '#bfdbfe', // Blue
   '#bbf7d0', // Green
+  '#fde68a', // Amber
+  '#fed7aa', // Orange
+  '#d8b4fe', // Purple
+];
+
+export const NPC_NOTE_SAMPLES = [
+    { author: "Alex", text: "Kopi Meta terbaik!" },
+    { author: "Sisca", text: "Sukses terus Metamorfosa 🍃" },
+    { author: "Rian", text: "Waffle-nya bikin nagih, parah!" },
+    { author: "Dewi", text: "Tempatnya cozy banget buat nugas." },
+    { author: "Putra", text: "Wi-Fi kenceng, auto jadi member." },
+    { author: "Lina", text: "Ada yang mau mabar? Kumpul di meja 5." },
+    { author: "Yoga", text: "Baristanya ramah-ramah euy." }
+];
+
+export const REACTION_EMOJIS = ['👍', '❤️', '😂', '🔥'];
+
+// FIX: Add missing XP_FOR_LEVEL constant for the user leveling system.
+export const XP_FOR_LEVEL = [
+  0,    // Level 0 placeholder
+  100,  // XP to reach Level 2
+  250,  // XP to reach Level 3
+  500,  // XP to reach Level 4
+  1000, // XP to reach Level 5
+  2000, // XP to reach Level 6
+  5000, // XP to reach Level 7
 ];

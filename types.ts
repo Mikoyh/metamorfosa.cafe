@@ -5,7 +5,7 @@ export interface MenuItem {
   price: number;
   category: string;
   image: string;
-  description?: string; // Added description
+  description?: string;
   isTopPick?: boolean;
 }
 
@@ -14,7 +14,7 @@ export interface CartItem extends MenuItem {
 }
 
 export interface Voucher {
-    id: string;
+    id:string;
     title: string;
     description: string;
     costInGold: number;
@@ -30,6 +30,15 @@ export interface User {
   vouchers: Voucher[];
 }
 
+export interface ActiveOrder {
+  orderId: string;
+  user: User;
+  items: CartItem[];
+  status: 'COOKING' | 'WAITING' | 'READY';
+  notes?: string;
+  isNpc?: boolean;
+}
+
 export interface StoreStatus {
   cafeOpen: boolean;
   gofoodOpen: boolean;
@@ -43,8 +52,28 @@ export interface WallNote {
   y: number;
   author: string;
   timestamp: number;
+  isNpc?: boolean;
+  replyTo?: string; // ID of the note being replied to
+  reactions?: { [emoji: string]: string[] }; // e.g., { '👍': ['user1', 'user2'] }
+  pinnedUntil?: number; // Timestamp
 }
 
-export type QueueStatus = 'IDLE' | 'WAITING' | 'COOKING' | 'DELIVERED';
+export interface BlockedUser {
+  name: string;
+  reason: string;
+  timestamp: number;
+}
 
-export type Page = 'home' | 'menu' | 'leaderboard' | 'shop' | 'wall' | 'profile';
+
+export type QueueStatus = 'IDLE' | 'WAITING' | 'COOKING' | 'READY' | 'DELIVERED';
+
+export type Page = 'home' | 'menu' | 'leaderboard' | 'shop' | 'wall' | 'profile' | 'staff';
+
+export interface AppNotification {
+  id: string;
+  type: 'QUEUE' | 'WALL_REPLY';
+  title: string;
+  message: string;
+  read: boolean;
+  timestamp: number;
+}
