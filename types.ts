@@ -28,6 +28,9 @@ export interface User {
   level: number;
   role: 'Guest' | 'Regular' | 'Elite' | 'Legend';
   vouchers: Voucher[];
+  favorites: string[]; // Array of product IDs
+  rank?: number;
+  isVerified?: boolean;
 }
 
 export interface ActiveOrder {
@@ -37,6 +40,8 @@ export interface ActiveOrder {
   status: 'COOKING' | 'WAITING' | 'READY';
   notes?: string;
   isNpc?: boolean;
+  timestamp: number;
+  countdown?: number; // Minutes left
 }
 
 export interface StoreStatus {
@@ -53,9 +58,11 @@ export interface WallNote {
   author: string;
   timestamp: number;
   isNpc?: boolean;
-  replyTo?: string; // ID of the note being replied to
-  reactions?: { [emoji: string]: string[] }; // e.g., { '👍': ['user1', 'user2'] }
-  pinnedUntil?: number; // Timestamp
+  replyTo?: string; 
+  reactions?: { [emoji: string]: string[] }; 
+  pinnedUntil?: number; 
+  authorRank?: number;
+  isVerified?: boolean;
 }
 
 export interface BlockedUser {
@@ -64,14 +71,13 @@ export interface BlockedUser {
   timestamp: number;
 }
 
-
 export type QueueStatus = 'IDLE' | 'WAITING' | 'COOKING' | 'READY' | 'DELIVERED';
 
-export type Page = 'home' | 'menu' | 'leaderboard' | 'shop' | 'wall' | 'profile' | 'staff';
+export type Page = 'home' | 'menu' | 'leaderboard' | 'shop' | 'wall' | 'profile' | 'staff' | 'voucher-promo' | 'queue-history';
 
 export interface AppNotification {
   id: string;
-  type: 'QUEUE' | 'WALL_REPLY';
+  type: 'QUEUE' | 'WALL_REPLY' | 'SYSTEM';
   title: string;
   message: string;
   read: boolean;

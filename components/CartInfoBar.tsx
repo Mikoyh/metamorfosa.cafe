@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { ChevronUp } from 'lucide-react';
+import { ShoppingBag, ChevronRight } from 'lucide-react';
 import { CartItem } from '../types';
 
 const MotionDiv = motion.div as any;
@@ -17,28 +17,24 @@ const CartInfoBar: React.FC<CartInfoBarProps> = ({ cart, onOpenCart }) => {
 
   return (
     <MotionDiv
-      initial={{ y: '110%' }}
-      animate={{ y: 0 }}
-      exit={{ y: '110%' }}
-      transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-      drag="y"
-      dragConstraints={{ top: 0, bottom: 0 }}
-      dragElastic={{ top: 0.2, bottom: 1 }}
-      onDragEnd={(_, info) => {
-        if (info.offset.y < -50) {
-          onOpenCart();
-        }
-      }}
+      initial={{ y: 50, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      exit={{ y: 50, opacity: 0 }}
       onClick={onOpenCart}
-      className="fixed bottom-[72px] left-0 right-0 z-[480] p-4 cursor-pointer"
+      className="fixed bottom-[84px] left-4 right-4 z-[480] cursor-pointer"
     >
-        <div className="bg-gradient-to-t from-[#1b4332] to-green-800 text-white rounded-2xl p-4 flex items-center justify-between shadow-2xl shadow-green-900/40">
-            <div>
-                <p className="font-bold">{totalItems} Item di Keranjang</p>
-                <p className="text-xs opacity-80">Total Harga: Rp {totalPrice.toLocaleString()}</p>
+        <div className="bg-[#1b4332] text-white rounded-2xl p-4 flex items-center justify-between shadow-2xl shadow-green-900/40 border border-white/10 backdrop-blur-md">
+            <div className="flex items-center gap-3">
+              <div className="bg-white/20 p-2 rounded-xl">
+                <ShoppingBag size={20} className="animate-pulse" />
+              </div>
+              <div>
+                <p className="font-black text-sm tracking-tight">{totalItems} ITEM TERPILIH</p>
+                <p className="text-[10px] font-bold opacity-70 uppercase tracking-widest">Estimasi: Rp {totalPrice.toLocaleString()}</p>
+              </div>
             </div>
-            <div className="flex items-center gap-1 text-xs font-bold bg-white/20 px-3 py-1.5 rounded-full">
-                Lihat <ChevronUp size={16} />
+            <div className="bg-white text-[#1b4332] px-3 py-1.5 rounded-xl font-black text-[10px] flex items-center gap-1">
+              LIHAT <ChevronRight size={14} />
             </div>
         </div>
     </MotionDiv>

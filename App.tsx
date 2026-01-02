@@ -1,9 +1,9 @@
 
-import React, { useState, useEffect, useRef } from 'react';
-// FIX: Import 'motion' from 'framer-motion' to resolve the 'Cannot find name 'motion'' error.
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { AnimatePresence, useScroll, useMotionValueEvent, motion } from 'framer-motion';
 
-import { MenuItem, CartItem, User, Page, QueueStatus, Voucher, ActiveOrder, AppNotification } from './types';
+import { MenuItem, CartItem, User, Page, QueueStatus, Voucher, ActiveOrder, AppNotification, WallNote } from './types';
+import { MENU_DATA, XP_FOR_LEVEL } from './constants';
 
 // Components
 import Header from './components/Header';
@@ -15,6 +15,9 @@ import NotificationSheet from './components/NotificationSheet';
 import ProductDetailSheet from './components/ProductDetailSheet';
 import LoginModal from './components/LoginModal';
 import StaffPasswordModal from './components/StaffPasswordModal';
+import PaymentModal from './components/PaymentModal';
+import ReceiptModal from './components/ReceiptModal';
+import RatingModal from './components/RatingModal';
 
 // Pages
 import HomePage from './pages/HomePage';
@@ -24,9 +27,10 @@ import WallPage from './pages/WallPage';
 import ShopPage from './pages/ShopPage';
 import ProfilePage from './pages/ProfilePage';
 import LeaderboardPage from './pages/LeaderboardPage';
+import VoucherPromoPage from './pages/VoucherPromoPage';
+import QueueHistoryPage from './pages/QueueHistoryPage';
 
-
-const NPC_NAMES = ["Budi", "Siti", "Joko", "Ani", "Eka", "Dwi"];
+const NPC_NAMES = ["Alex", "Sisca", "Budi", "Dewi", "Yoga", "Rina", "Joko", "Lina", "Eko", "Maya", "Didi", "Lulu"];
 const MotionDiv = motion.div as any;
 
 export default function App() {
@@ -34,296 +38,273 @@ export default function App() {
   const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [isSideNavOpen, setIsSideNavOpen] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [user, setUser] = useState<User>({ name: '', tableNumber: '', xp: 0, gold: 0, level: 1, role: 'Guest', vouchers: [] });
+  const [user, setUser] = useState<User>({ name: '', tableNumber: '', xp: 0, gold: 0, level: 1, role: 'Guest', vouchers: [], favorites: [] });
   const [isStaffMode, setIsStaffMode] = useState(false);
+  const [isStaffPasswordModalOpen, setIsStaffPasswordModalOpen] = useState(false);
   
   const [selectedProduct, setSelectedProduct] = useState<MenuItem | null>(null);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [queueStatus, setQueueStatus] = useState<QueueStatus>('IDLE');
   const [allActiveOrders, setAllActiveOrders] = useState<ActiveOrder[]>([]);
-  const [isStaffPasswordModalOpen, setIsStaffPasswordModalOpen] = useState(false);
+  const [historyOrders, setHistoryOrders] = useState<ActiveOrder[]>([]);
+  const [userHistory, setUserHistory] = useState<MenuItem[]>([]);
   
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [isReceiptOpen, setIsReceiptOpen] = useState(false);
+  const [isRatingOpen, setIsRatingOpen] = useState(false);
+  const [lastCompletedOrder, setLastCompletedOrder] = useState<ActiveOrder | null>(null);
+  const [orderToPay, setOrderToPay] = useState<{ items: CartItem[], notes?: string } | null>(null);
+  const [cartFeedback, setCartFeedback] = useState<string | null>(null);
+
   const { scrollY } = useScroll();
   const [isHeaderVisible, setIsHeaderVisible] = useState(true);
   const lastScrollY = useRef(0);
 
+  // NPC Leaderboard Generator (Top 100)
+  const leaderboardData = useMemo(() => {
+    const npcs: User[] = Array.from({length: 100}).map((_, i) => ({
+      name: NPC_NAMES[i % NPC_NAMES.length] + " " + (Math.floor(i/NPC_NAMES.length) + 1),
+      tableNumber: '0',
+      xp: 15000 - (i * 145) + Math.random() * 50,
+      gold: 5000 - i * 45,
+      level: Math.floor((15000 - i * 145) / 1000) + 1,
+      role: i < 3 ? 'Legend' : i < 10 ? 'Elite' : 'Regular',
+      vouchers: [],
+      favorites: [],
+      isVerified: i < 5
+    }));
+    
+    const combined = isLoggedIn ? [...npcs, user] : npcs;
+    return combined.sort((a, b) => b.xp - a.xp).map((u, i) => ({ ...u, rank: i + 1 }));
+  }, [user.xp, isLoggedIn]);
+
+  const addXP = (amount: number) => {
+    setUser(prev => {
+      const newXp = prev.xp + amount;
+      let newLevel = prev.level;
+      if (XP_FOR_LEVEL[prev.level] && newXp >= XP_FOR_LEVEL[prev.level]) {
+        newLevel += 1;
+        setNotifications(n => [{ id: Date.now().toString(), type: 'SYSTEM', title: 'LEVEL UP!', message: `Selamat! Kamu sekarang Level ${newLevel}!`, read: false, timestamp: Date.now() }, ...n]);
+      }
+      return { ...prev, xp: newXp, level: newLevel };
+    });
+  };
+
+  const toggleFavorite = (productId: string) => {
+    setUser(prev => ({
+      ...prev,
+      favorites: prev.favorites.includes(productId) 
+        ? prev.favorites.filter(id => id !== productId)
+        : [...prev.favorites, productId]
+    }));
+  };
+
+  // Improved NPC Logic (Sequential FIFO + Auto Completion)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setAllActiveOrders(prev => {
+        if (prev.length === 0) return prev;
+        
+        // Process the oldest non-ready order
+        const pendingOrders = prev.filter(o => o.status !== 'READY');
+        if (pendingOrders.length === 0) return prev;
+        
+        const oldestPendingId = pendingOrders[pendingOrders.length - 1].orderId;
+
+        return prev.map((o) => {
+          if (o.orderId === oldestPendingId) {
+            if (o.status === 'WAITING') return { ...o, status: 'COOKING', countdown: 3 };
+            if (o.status === 'COOKING') {
+              if (o.countdown && o.countdown > 0) return { ...o, countdown: o.countdown - 1 };
+              if (o.isNpc) return { ...o, status: 'READY', countdown: 0 };
+            }
+          }
+          return o;
+        });
+      });
+
+      // Clear ready NPC orders after 30 seconds
+      setAllActiveOrders(prev => {
+        const now = Date.now();
+        return prev.filter(o => {
+          if (o.isNpc && o.status === 'READY' && now - o.timestamp > 40000) {
+             setHistoryOrders(h => [{...o, timestamp: now}, ...h].slice(0, 10));
+             return false;
+          }
+          return true;
+        });
+      });
+
+      // Periodic NPC Spawning
+      if (allActiveOrders.length < 6 && Math.random() > 0.6) {
+        const name = NPC_NAMES[Math.floor(Math.random() * NPC_NAMES.length)];
+        const randomItem = MENU_DATA[Math.floor(Math.random() * MENU_DATA.length)];
+        const newNpcOrder: ActiveOrder = {
+          orderId: `NPC-${Math.floor(1000 + Math.random() * 9000)}`,
+          user: { name, tableNumber: String(Math.floor(Math.random() * 20) + 1), xp: 0, gold: 0, level: 1, role: 'Regular', vouchers: [], favorites: [] },
+          items: [{ ...randomItem, quantity: 1 }],
+          status: 'WAITING',
+          isNpc: true,
+          timestamp: Date.now(),
+          countdown: 5
+        };
+        setAllActiveOrders(prev => [newNpcOrder, ...prev]);
+      }
+    }, 8000);
+    return () => clearInterval(interval);
+  }, [allActiveOrders.length]);
+
   useMotionValueEvent(scrollY, "change", (latest) => {
     const direction = latest > lastScrollY.current ? 'down' : 'up';
-    if (latest < 50) { setIsHeaderVisible(true); } 
-    else if (direction === 'down' && isHeaderVisible) { setIsHeaderVisible(false); } 
-    else if (direction === 'up' && !isHeaderVisible) { setIsHeaderVisible(true); }
+    if (latest < 50) setIsHeaderVisible(true);
+    else if (direction === 'down' && isHeaderVisible) setIsHeaderVisible(false);
+    else if (direction === 'up' && !isHeaderVisible) setIsHeaderVisible(true);
     lastScrollY.current = latest;
   });
 
-  // Global Body Scroll Lock
-  useEffect(() => {
-    const isAnyModalOpen = isSideNavOpen || isCartOpen || isNotificationOpen || !!selectedProduct || isLoginOpen || isStaffPasswordModalOpen;
-
-    if (isAnyModalOpen) {
-      const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
-      document.body.style.overflow = 'hidden';
-      document.body.style.paddingRight = `${scrollbarWidth}px`;
-    } else {
-      document.body.style.overflow = '';
-      document.body.style.paddingRight = '';
-    }
-
-    return () => {
-      document.body.style.overflow = '';
-      document.body.style.paddingRight = '';
-    };
-  }, [isSideNavOpen, isCartOpen, isNotificationOpen, selectedProduct, isLoginOpen, isStaffPasswordModalOpen]);
-
-
-  // NPC Management
-  useEffect(() => {
-    const generateNpcOrder = (): ActiveOrder => ({
-      orderId: `npc-${Date.now()}-${Math.random()}`,
-      user: {
-        name: NPC_NAMES[Math.floor(Math.random() * NPC_NAMES.length)],
-        tableNumber: Math.floor(Math.random() * 15 + 1).toString(),
-        xp: 0, gold: 0,
-        level: Math.floor(Math.random() * 5 + 1),
-        role: 'Guest', vouchers: []
-      },
-      items: [],
-      status: 'WAITING',
-      isNpc: true,
-    });
-
-    const interval = setInterval(() => {
-      setAllActiveOrders(prevOrders => {
-        let newOrders = [...prevOrders];
-        if (newOrders.filter(o => o.isNpc).length < 4) {
-          const newNpc = generateNpcOrder();
-          if (newOrders.filter(o => o.status === 'COOKING').length === 0) {
-            newNpc.status = 'COOKING';
-          }
-          newOrders.push(newNpc);
-        }
-        const cookingNpcs = newOrders.filter(o => o.isNpc && o.status === 'COOKING');
-        if (cookingNpcs.length > 0) {
-          const oldestNpcId = cookingNpcs[0].orderId;
-          newOrders = newOrders.filter(o => o.orderId !== oldestNpcId);
-          const waitingOrders = newOrders.filter(o => o.status === 'WAITING');
-          if (waitingOrders.length > 0) {
-            const nextInLine = newOrders.find(o => o.orderId === waitingOrders[0].orderId);
-            if (nextInLine) nextInLine.status = 'COOKING';
-          }
-        }
-        return newOrders;
-      });
-    }, 15000);
-
-    return () => clearInterval(interval);
-  }, []);
-
-  useEffect(() => {
-    const savedUser = localStorage.getItem('metamorfosa_user_v3');
-    if (savedUser) { const data = JSON.parse(savedUser); setUser(data.user); setIsLoggedIn(data.isLoggedIn); }
-    const savedOrders = localStorage.getItem('metamorfosa_orders_v3');
-    if (savedOrders) { setAllActiveOrders(JSON.parse(savedOrders)); }
-    const savedNotifs = localStorage.getItem('metamorfosa_notifs_v3');
-    if (savedNotifs) { setNotifications(JSON.parse(savedNotifs)); }
-    const savedCart = localStorage.getItem('metamorfosa_cart_v3');
-    if (savedCart) { setCart(JSON.parse(savedCart)); }
-  }, []);
-
-  useEffect(() => {
-    if (isLoggedIn) {
-      localStorage.setItem('metamorfosa_user_v3', JSON.stringify({ user, isLoggedIn }));
-    } else {
-      localStorage.removeItem('metamorfosa_user_v3');
-    }
-  }, [user, isLoggedIn]);
-  
-  useEffect(() => {
-      localStorage.setItem('metamorfosa_notifs_v3', JSON.stringify(notifications));
-  }, [notifications]);
-  
-  useEffect(() => {
-    localStorage.setItem('metamorfosa_cart_v3', JSON.stringify(cart));
-  }, [cart]);
-
-  useEffect(() => {
-    const handleStorageChange = (event: StorageEvent) => {
-        if (event.key === 'metamorfosa_orders_v3') {
-            const savedOrders = event.newValue;
-            const updatedOrders: ActiveOrder[] = savedOrders ? JSON.parse(savedOrders) : [];
-            setAllActiveOrders(prev => [...prev.filter(o => o.isNpc), ...updatedOrders.filter(o => !o.isNpc)]);
-        }
-    };
-    window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
-  }, []);
-
-  useEffect(() => {
-    const myOrder = allActiveOrders.find(order => !order.isNpc && order.user.name === user.name && order.user.tableNumber === user.tableNumber);
-    if (myOrder) {
-        if (queueStatus !== myOrder.status) setQueueStatus(myOrder.status);
-    } else {
-        if (queueStatus === 'COOKING' || queueStatus === 'WAITING' || queueStatus === 'READY') {
-            setQueueStatus('DELIVERED');
-            setTimeout(() => setQueueStatus('IDLE'), 5000);
-        }
-    }
-  }, [allActiveOrders, user.name, user.tableNumber, queueStatus]);
-
-  const addNotification = (notif: Omit<AppNotification, 'id' | 'read' | 'timestamp'>) => {
-    const newNotif: AppNotification = {
-        ...notif,
-        id: new Date().toISOString(),
-        read: false,
-        timestamp: Date.now()
-    };
-    setNotifications(prev => [newNotif, ...prev]);
-  };
-
-  const onLogin = (name: string, table: string) => { 
-    if (!name || !table) return; 
-    setUser({ name, tableNumber: table, xp: 0, gold: 0, level: 1, role: 'Guest', vouchers: [] }); 
-    setIsLoggedIn(true); 
-    setIsLoginOpen(false); 
-    setIsSideNavOpen(false); 
-  };
-
-  const onLogout = () => { 
-    setIsStaffMode(false);
-    setIsLoggedIn(false); 
-    setUser({ name: '', tableNumber: '', xp: 0, gold: 0, level: 1, role: 'Guest', vouchers: [] });
-    setPage('home'); 
-    setIsSideNavOpen(false); 
-  };
-  
-  const handleStaffLogin = (password: string) => {
-    setIsStaffPasswordModalOpen(false);
-    if (password === 'AV7AVAIOBDKOPWBDG') {
-      setIsStaffMode(true);
-      setPage('staff');
-    } else if (password !== "") {
-      alert('Incorrect Password!');
-    }
-  };
-
   const handlePageChange = (newPage: Page) => {
-      setIsSideNavOpen(false);
-      if (newPage === 'staff' && !isStaffMode) {
-          setIsStaffPasswordModalOpen(true);
-      } else {
-          setPage(newPage);
-      }
-  };
-  
-  const handleCompleteOrder = (orderId: string) => {
-    let updatedOrders = allActiveOrders.filter(o => o.orderId !== orderId);
-    const nextInLine = updatedOrders.find(o => o.status === 'WAITING');
-    if (nextInLine) {
-        const index = updatedOrders.findIndex(o => o.orderId === nextInLine.orderId);
-        updatedOrders[index].status = 'COOKING';
+    if (newPage === 'profile' && !isLoggedIn) {
+      setIsLoginOpen(true);
+      return;
     }
-    setAllActiveOrders(updatedOrders);
-    const nonNpcOrders = updatedOrders.filter(o => !o.isNpc);
-    localStorage.setItem('metamorfosa_orders_v3', JSON.stringify(nonNpcOrders));
-    window.dispatchEvent(new StorageEvent('storage', { key: 'metamorfosa_orders_v3', newValue: JSON.stringify(nonNpcOrders) }));
+    setPage(newPage);
+    setIsSideNavOpen(false);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleMarkOrderReady = (orderId: string) => {
-    setAllActiveOrders(prevOrders => {
-        const newOrders = [...prevOrders];
-        const orderIndex = newOrders.findIndex(o => o.orderId === orderId);
-        if (orderIndex > -1) {
-            newOrders[orderIndex].status = 'READY';
-            setTimeout(() => handleCompleteOrder(orderId), 4000);
-        }
-        return newOrders;
-    });
+  const handleMarkReady = (orderId: string) => {
+    const order = allActiveOrders.find(o => o.orderId === orderId);
+    if (!order) return;
+    setHistoryOrders(prev => [{ ...order, status: 'READY', timestamp: Date.now() }, ...prev].slice(0, 10));
+    setAllActiveOrders(prev => prev.filter(o => o.orderId !== orderId));
+    if (!order.isNpc && order.user.name === user.name) {
+      setLastCompletedOrder({ ...order, status: 'READY' });
+      setTimeout(() => setIsRatingOpen(true), 1500);
+    }
   };
 
-  const handleCheckout = (notes: string) => {
-    if (!isLoggedIn) { setIsLoginOpen(true); return; }
-    if (cart.length === 0) return;
-    const isAnyoneCooking = allActiveOrders.some(o => o.status === 'COOKING');
-    const newOrder: ActiveOrder = {
-        orderId: new Date().toISOString() + user.name,
-        user: user,
-        items: cart,
-        status: isAnyoneCooking ? 'WAITING' : 'COOKING',
-        notes: notes.trim() ? notes.trim() : undefined,
-    };
-    
-    const updatedOrders = [...allActiveOrders, newOrder];
-    setAllActiveOrders(updatedOrders);
-    const nonNpcOrders = updatedOrders.filter(o => !o.isNpc);
-    localStorage.setItem('metamorfosa_orders_v3', JSON.stringify(nonNpcOrders));
-    window.dispatchEvent(new StorageEvent('storage', { key: 'metamorfosa_orders_v3', newValue: JSON.stringify(nonNpcOrders) }));
-
-    setQueueStatus(newOrder.status);
-    setCart([]);
-    setIsCartOpen(false);
-    
-    const totalXP = 10 * cart.length; 
-    const totalGold = 5 * cart.length;
-    setUser(prev => ({ ...prev, xp: prev.xp + totalXP, gold: prev.gold + totalGold }));
-    alert("Pesanan diterima! Cek status antrean di Homescreen.");
-  };
-
-  const handleAddToCart = (item: MenuItem) => {
-    const qty = (item as any).quantity || 1;
+  const handleAddToCart = (item: MenuItem & { quantity?: number }) => {
+    const qty = item.quantity ?? 1;
     setCart(prev => {
-        const existing = prev.find(i => i.id === item.id);
-        if (existing) return prev.map(i => i.id === item.id ? { ...i, quantity: i.quantity + qty } : i);
-        return [...prev, { ...item, quantity: qty }];
+      const existing = prev.find(i => i.id === item.id);
+      if (existing) return prev.map(i => i.id === item.id ? { ...i, quantity: i.quantity + qty } : i);
+      return [...prev, { ...item, quantity: qty } as CartItem];
     });
-    if ('vibrate' in navigator) navigator.vibrate([10, 50, 10]);
-  };
-  
-  const updateCartQuantity = (id: string, delta: number) => {
-    setCart(prev => prev.map(item => item.id === id ? { ...item, quantity: Math.max(0, item.quantity + delta) } : item).filter(item => item.quantity > 0));
-  };
-  
-  const handleRedeemVoucher = (voucher: Voucher) => {
-    if (user.gold < voucher.costInGold) { alert("Gold tidak cukup!"); return; }
-    if (user.vouchers.some(v => v.id === voucher.id)) { alert("Voucher ini sudah kamu miliki!"); return; }
-    setUser(prev => ({ ...prev, gold: prev.gold - voucher.costInGold, vouchers: [...prev.vouchers, voucher] }));
-    alert(`Berhasil menukar ${voucher.title}!`);
+    
+    setCartFeedback(item.name);
+    setIsHeaderVisible(true);
+    setTimeout(() => setCartFeedback(null), 3000);
   };
 
-  const userOrder = allActiveOrders.find(o => !o.isNpc && o.user.name === user.name && o.user.tableNumber === user.tableNumber);
-  const cartCount = cart.reduce((a, b) => a + b.quantity, 0);
+  const handleConfirmPayment = () => {
+    if (!orderToPay || !isLoggedIn) return;
+    const newOrder: ActiveOrder = {
+        orderId: `MT-${Math.floor(1000 + Math.random() * 9000)}`,
+        user: { ...user, rank: leaderboardData.find(u => u.name === user.name)?.rank },
+        items: orderToPay.items,
+        status: 'WAITING',
+        timestamp: Date.now(),
+        notes: orderToPay.notes?.trim() || undefined,
+    };
+    setAllActiveOrders(prev => [newOrder, ...prev]);
+    setUserHistory(prev => {
+        const newHistory = [...orderToPay.items.map(i => i as MenuItem), ...prev];
+        return Array.from(new Set(newHistory.map(i => i.id))).map(id => newHistory.find(h => h.id === id)!).slice(0, 10);
+    });
+    if (JSON.stringify(orderToPay.items) === JSON.stringify(cart)) setCart([]);
+    setLastCompletedOrder(newOrder);
+    setIsPaymentModalOpen(false);
+    setIsReceiptOpen(true);
+    addXP(150);
+    setPage('home');
+  };
+
+  const unreadCount = notifications.filter(n => !n.read).length;
 
   return (
     <div className="max-w-md mx-auto min-h-screen bg-green-50/20 shadow-2xl relative flex flex-col">
-      <Header isVisible={isHeaderVisible} onMenuClick={() => setIsSideNavOpen(true)} cartCount={cartCount} hasNotification={queueStatus !== 'IDLE' || notifications.some(n => !n.read)} onCartClick={() => setIsCartOpen(true)} onNotificationClick={() => setIsNotificationOpen(true)} setPage={handlePageChange} isStaffMode={isStaffMode} />
-      <SideNavDrawer isOpen={isSideNavOpen} onClose={() => setIsSideNavOpen(false)} user={user} isLoggedIn={isLoggedIn} onLoginClick={() => { setIsSideNavOpen(false); setIsLoginOpen(true); }} onLogout={onLogout} setPage={handlePageChange} />
+      <Header 
+        isVisible={isHeaderVisible} 
+        onMenuClick={() => setIsSideNavOpen(true)} 
+        cartCount={cart.reduce((a,b)=>a+b.quantity,0)} 
+        hasNotification={unreadCount > 0} 
+        unreadCount={unreadCount} 
+        onCartClick={() => setIsCartOpen(true)} 
+        onNotificationClick={() => setIsNotificationOpen(true)} 
+        setPage={handlePageChange} 
+        isStaffMode={isStaffMode} 
+      />
       
+      <SideNavDrawer 
+        isOpen={isSideNavOpen} 
+        onClose={() => setIsSideNavOpen(false)} 
+        user={user} 
+        isLoggedIn={isLoggedIn} 
+        onLoginClick={() => setIsLoginOpen(true)} 
+        onLogout={() => setIsLoggedIn(false)} 
+        setPage={handlePageChange} 
+        isStaffMode={isStaffMode} 
+        onStaffAccess={() => setIsStaffPasswordModalOpen(true)}
+        setIsStaffMode={setIsStaffMode} 
+      />
+
       <main className="flex-grow">
         <AnimatePresence mode="wait">
-          {page === 'home' && <HomePage key="home" setPage={handlePageChange} user={user} isLoggedIn={isLoggedIn} onLoginClick={() => setIsLoginOpen(true)} queueStatus={queueStatus} userOrder={userOrder} allActiveOrders={allActiveOrders} />}
-          {page === 'menu' && <MenuPage key="menu" onProductClick={setSelectedProduct} onAddToCart={(item) => isLoggedIn ? handleAddToCart(item) : setIsLoginOpen(true)} isHeaderVisible={isHeaderVisible} />}
-          {page === 'staff' && <StaffPage key="staff" activeOrders={allActiveOrders.filter(o => !o.isNpc)} onMarkReady={handleMarkOrderReady} />}
-          {page === 'wall' && <WallPage key="wall" user={user} addNotification={addNotification} onLoginClick={() => setIsLoginOpen(true)} isHeaderVisible={isHeaderVisible} isStaffMode={isStaffMode} />}
-          {page === 'shop' && <ShopPage key="shop" user={user} onRedeemVoucher={handleRedeemVoucher} />}
-          {page === 'profile' && isLoggedIn && <ProfilePage key="profile" user={user} onLogout={onLogout} />}
-          {page === 'leaderboard' && <LeaderboardPage key="leaderboard" />}
+          {page === 'home' && <HomePage key="home" setPage={handlePageChange} user={user} isLoggedIn={isLoggedIn} onLoginClick={() => setIsLoginOpen(true)} userOrder={allActiveOrders.find(o => !o.isNpc && o.user.name === user.name)} allActiveOrders={allActiveOrders} leaderboard={leaderboardData.slice(0, 5)} userHistory={userHistory} onAddToCart={handleAddToCart} onProductClick={setSelectedProduct} />}
+          {page === 'menu' && <MenuPage key="menu" onProductClick={setSelectedProduct} onAddToCart={handleAddToCart} isHeaderVisible={isHeaderVisible} favorites={user.favorites} toggleFavorite={toggleFavorite} />}
+          {page === 'staff' && <StaffPage key="staff" activeOrders={allActiveOrders} onMarkReady={handleMarkReady} />}
+          {page === 'wall' && <WallPage key="wall" user={{...user, rank: leaderboardData.find(u=>u.name===user.name)?.rank}} addNotification={(n) => setNotifications(prev => [{...n, id: Date.now().toString(), read: false, timestamp: Date.now()} as AppNotification, ...prev])} onLoginClick={() => setIsLoginOpen(true)} isHeaderVisible={isHeaderVisible} isStaffMode={isStaffMode} addXP={() => addXP(30)} />}
+          {page === 'shop' && <ShopPage key="shop" user={user} onRedeemVoucher={() => {}} />}
+          {page === 'profile' && <ProfilePage key="profile" user={{...user, rank: leaderboardData.find(u=>u.name===user.name)?.rank}} onLogout={() => setIsLoggedIn(false)} history={userHistory} onLoginClick={() => setIsLoginOpen(true)} isLoggedIn={isLoggedIn} />}
+          {page === 'leaderboard' && <LeaderboardPage key="leaderboard" data={leaderboardData} currentUser={user} />}
+          {page === 'voucher-promo' && <VoucherPromoPage key="vouchers" />}
+          {page === 'queue-history' && <QueueHistoryPage key="queue" activeOrders={allActiveOrders} historyOrders={historyOrders} user={user} />}
         </AnimatePresence>
       </main>
-      
+
       <AnimatePresence>
-          {cart.length > 0 && !isCartOpen && <CartInfoBar cart={cart} onOpenCart={() => setIsCartOpen(true)} />}
+        {cartFeedback && (
+          <MotionDiv 
+            initial={{ y: 50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 50, opacity: 0 }}
+            className="fixed top-20 left-1/2 -translate-x-1/2 z-[600] bg-[#1b4332] text-white px-6 py-3 rounded-full shadow-2xl font-bold text-xs flex items-center gap-2 whitespace-nowrap"
+          >
+            ✅ {cartFeedback} masuk keranjang
+          </MotionDiv>
+        )}
       </AnimatePresence>
+
+      <AnimatePresence>
+        {cart.length > 0 && !isCartOpen && page === 'menu' && (
+          <CartInfoBar cart={cart} onOpenCart={() => setIsCartOpen(true)} />
+        )}
+      </AnimatePresence>
+
+      <BottomNav page={page} setPage={handlePageChange} isLoggedIn={isLoggedIn} onLoginClick={() => setIsLoginOpen(true)} isStaffMode={isStaffMode} onLogout={() => setIsLoggedIn(false)} onCartClick={() => setIsCartOpen(true)} cartCount={cart.reduce((a,b)=>a+b.quantity,0)} />
+
+      <ProductDetailSheet product={selectedProduct} isOpen={!!selectedProduct} onClose={() => setSelectedProduct(null)} isLoggedIn={isLoggedIn} onLogin={() => setIsLoginOpen(true)} onAddToCart={handleAddToCart} onPesanSekarang={(item, qty) => { setOrderToPay({ items: [{ ...item, quantity: qty }] }); isLoggedIn ? setIsPaymentModalOpen(true) : setIsLoginOpen(true); }} />
+      <CartSheet isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} cart={cart} updateQuantity={(id, d) => setCart(prev => prev.map(i => i.id === id ? { ...i, quantity: Math.max(0, i.quantity + d) } : i).filter(i => i.quantity > 0))} checkout={(notes) => { setOrderToPay({ items: cart, notes }); isLoggedIn ? setIsPaymentModalOpen(true) : setIsLoginOpen(true); }} isLoggedIn={isLoggedIn} />
       
-      <MotionDiv animate={{ y: isCartOpen ? 100 : 0 }} transition={{ type: 'spring', damping: 25, stiffness: 200 }}>
-        <BottomNav page={page} setPage={handlePageChange} isLoggedIn={isLoggedIn} onLoginClick={() => setIsLoginOpen(true)} isStaffMode={isStaffMode} onLogout={onLogout} onCartClick={() => setIsCartOpen(true)} cartCount={cartCount} />
-      </MotionDiv>
+      <PaymentModal isOpen={isPaymentModalOpen} onClose={() => setIsPaymentModalOpen(false)} order={orderToPay} onConfirm={handleConfirmPayment} />
+      <ReceiptModal isOpen={isReceiptOpen} onClose={() => setIsReceiptOpen(false)} order={lastCompletedOrder} />
+      <RatingModal isOpen={isRatingOpen} onClose={() => setIsRatingOpen(false)} onSubmit={(s, c) => { setIsRatingOpen(false); addXP(50); }} />
       
-      <ProductDetailSheet product={selectedProduct} isOpen={!!selectedProduct} onClose={() => setSelectedProduct(null)} isLoggedIn={isLoggedIn} onLogin={() => { setSelectedProduct(null); setIsLoginOpen(true); }} onAddToCart={handleAddToCart} />
-      <CartSheet isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} cart={cart} updateQuantity={updateCartQuantity} checkout={handleCheckout} isLoggedIn={isLoggedIn} />
-      <NotificationSheet isOpen={isNotificationOpen} onClose={() => setIsNotificationOpen(false)} queueStatus={queueStatus} notifications={notifications} setNotifications={setNotifications} />
-      <LoginModal isOpen={isLoginOpen} onClose={() => setIsLoginOpen(false)} onLogin={onLogin} />
-      <StaffPasswordModal isOpen={isStaffPasswordModalOpen} onClose={() => setIsStaffPasswordModalOpen(false)} onSubmit={handleStaffLogin} />
+      <LoginModal isOpen={isLoginOpen} onClose={() => setIsLoginOpen(false)} onLogin={(n, t) => { setUser(p => ({ ...p, name: n, tableNumber: t })); setIsLoggedIn(true); setIsLoginOpen(false); addXP(100); }} />
+      <StaffPasswordModal 
+        isOpen={isStaffPasswordModalOpen} 
+        onClose={() => setIsStaffPasswordModalOpen(false)} 
+        onSubmit={(pw) => {
+           if (pw === 'metaadmin') {
+             setIsStaffMode(true);
+             setPage('staff');
+             setIsStaffPasswordModalOpen(false);
+           } else {
+             alert('Password Salah!');
+           }
+        }} 
+      />
+      <NotificationSheet isOpen={isNotificationOpen} onClose={() => setIsNotificationOpen(false)} queueStatus="IDLE" notifications={notifications} setNotifications={setNotifications} />
     </div>
   );
 }

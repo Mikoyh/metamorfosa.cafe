@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Home, MessageSquare, ShoppingBag, Trophy, User as UserIcon, ChefHat, LogOut } from 'lucide-react';
+import { Home, MessageSquare, ShoppingBag, ShoppingCart, Trophy, User as UserIcon, ChefHat, LogOut } from 'lucide-react';
 import { Page } from '../types';
 
 const MotionDiv = motion.div as any;
@@ -26,105 +26,61 @@ const BottomNav: React.FC<BottomNavProps> = ({ page, setPage, isLoggedIn, onLogi
     { id: 'profile', icon: UserIcon, label: 'Saya' },
   ];
   
-  const staffNavItems = [
+  const navItems = isStaffMode ? [
     { id: 'staff', icon: ChefHat, label: 'Queue' },
     { id: 'wall', icon: MessageSquare, label: 'Wall' },
     { id: 'logout', icon: LogOut, label: 'Logout' },
-  ];
-
-  const handleNavClick = (id: Page | 'logout') => {
-    if (id === 'logout') {
-        onLogout();
-        return;
-    }
-    if (id === 'profile' && !isLoggedIn) {
-      onLoginClick();
-    } else {
-      setPage(id);
-    }
-  };
-
-  const navItems = isStaffMode ? staffNavItems : userNavItems;
-  const bgColor = isStaffMode ? 'bg-slate-800' : 'bg-white';
-  const borderColor = isStaffMode ? 'border-slate-700' : 'border-slate-100';
-
-  if (isStaffMode) {
-    return (
-        <div className={`fixed bottom-0 left-0 right-0 ${bgColor} border-t ${borderColor} pb-safe pt-2 px-2 z-[490] h-[72px] flex justify-around items-start shadow-[0_-5px_20px_rgba(0,0,0,0.1)]`}>
-            {navItems.map((item) => {
-                const isActive = page === item.id;
-                return (
-                    <button key={item.id} onClick={() => handleNavClick(item.id as Page)} className={`flex flex-col items-center justify-start w-20 gap-1 pt-1 ${isActive ? 'text-white' : 'text-slate-400'}`}>
-                        <item.icon size={22} strokeWidth={isActive ? 2.5 : 2} />
-                        <span className={`text-[10px] font-medium ${isActive ? 'text-white' : 'text-slate-400'}`}>{item.label}</span>
-                    </button>
-                );
-            })}
-        </div>
-    );
-  }
+  ] : userNavItems;
 
   return (
-    <div className={`fixed bottom-0 left-0 right-0 ${bgColor} border-t ${borderColor} pb-safe pt-2 px-2 z-[490] h-[72px] flex justify-around items-start shadow-[0_-5px_20px_rgba(0,0,0,0.03)]`}>
+    <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-100 pb-safe pt-2 px-2 z-[490] h-[90px] flex justify-around items-center shadow-[0_-15px_40px_rgba(0,0,0,0.08)]">
       {navItems.map((item, index) => {
         const isActive = page === item.id;
-        const isCenter = index === 2;
+        const isCenter = !isStaffMode && index === 2;
+        
         if (isCenter) {
           return (
-            <div key={item.id} className="relative w-16 h-full flex flex-col items-center">
-              <AnimatePresence mode="popLayout">
-                {page === 'menu' ? (
-                  <MotionDiv
-                    key="cart-button"
-                    id="bottom-nav-cart-icon"
-                    initial={{ x: 50, opacity: 0 }}
-                    animate={{ x: 0, opacity: 1, transition: { delay: 0.2, type: 'spring', stiffness: 400, damping: 20 } }}
-                    exit={{ x: -50, opacity: 0, transition: { duration: 0.2 } }}
-                    onClick={onCartClick}
-                    className="absolute -top-6 cursor-pointer"
-                  >
-                    <MotionDiv className={`w-14 h-14 rounded-full flex items-center justify-center shadow-lg border-4 border-white bg-[#1b4332] text-white`} whileTap={{ scale: 0.9 }}>
-                      <ShoppingBag size={24} />
-                       {cartCount > 0 && (
-                        <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold h-4 min-w-[16px] px-1 flex items-center justify-center rounded-full ring-2 ring-white">
+            <div key={item.id} className="relative w-20 flex flex-col items-center">
+              <motion.div 
+                whileTap={{ scale: 0.9 }}
+                className={`w-16 h-16 rounded-full flex flex-col items-center justify-center shadow-2xl border-4 border-white bg-[#1b4332] text-white absolute -top-10 cursor-pointer transition-all`}
+                onClick={() => page === 'menu' ? onCartClick() : setPage('menu')}
+              >
+                <AnimatePresence mode="wait">
+                  {page === 'menu' ? (
+                    <MotionDiv key="cart" initial={{ scale: 0.5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.5, opacity: 0 }} className="flex flex-col items-center">
+                      <ShoppingCart size={22} />
+                      <span className="text-[8px] font-black mt-0.5">CART</span>
+                      {cartCount > 0 && (
+                        <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] font-black h-5 min-w-[20px] px-1.5 flex items-center justify-center rounded-full ring-2 ring-white">
                           {cartCount}
                         </span>
                       )}
                     </MotionDiv>
-                  </MotionDiv>
-                ) : (
-                  <MotionDiv
-                    key="menu-button"
-                    initial={{ y: 50, scale: 0.5, opacity: 0 }}
-                    animate={{ y: 0, scale: 1, opacity: 1, transition: { delay: 0.2, type: 'spring', stiffness: 300, damping: 20 } }}
-                    exit={{ y: -50, scale: 0.5, opacity: 0, transition: { duration: 0.2 } }}
-                    onClick={() => handleNavClick(item.id as Page)}
-                    className="absolute -top-6 cursor-pointer"
-                  >
-                    <MotionDiv className={`w-14 h-14 rounded-full flex items-center justify-center shadow-lg border-4 border-white ${isActive ? 'bg-[#1b4332] text-white' : 'bg-[#1b4332] text-white'}`} whileTap={{ scale: 0.9 }}>
-                      <ShoppingBag size={24} />
+                  ) : (
+                    <MotionDiv key="menu" initial={{ scale: 0.5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.5, opacity: 0 }} className="flex flex-col items-center">
+                      <ShoppingBag size={22} />
+                      <span className="text-[8px] font-black mt-0.5">MENU</span>
                     </MotionDiv>
-                  </MotionDiv>
-                )}
-              </AnimatePresence>
-              <AnimatePresence mode="wait">
-                 <MotionDiv
-                    key={page === 'menu' ? 'Keranjang' : item.label}
-                    initial={{ y: 10, opacity: 0 }}
-                    animate={{ y: 0, opacity: 1 }}
-                    exit={{ y: -10, opacity: 0 }}
-                    transition={{ duration: 0.1 }}
-                 >
-                   <span className="absolute bottom-1.5 text-center text-[10px] font-bold text-slate-500 w-full left-1/2 -translate-x-1/2">{page === 'menu' ? 'Keranjang' : item.label}</span>
-                 </MotionDiv>
-              </AnimatePresence>
+                  )}
+                </AnimatePresence>
+              </motion.div>
             </div>
           );
         }
+        
         return (
-          <button key={item.id} onClick={() => handleNavClick(item.id as Page)} className={`flex flex-col items-center justify-start w-16 gap-1 pt-1 ${isActive ? 'text-[#1b4332]' : 'text-slate-300'}`}>
-            <item.icon size={22} strokeWidth={isActive ? 2.5 : 2} />
-            <span className={`text-[10px] font-medium ${isActive ? 'text-[#1b4332]' : 'text-slate-400'}`}>{item.label}</span>
+          <button 
+            key={item.id} 
+            onClick={() => {
+                if (item.id === 'logout') onLogout();
+                else if (item.id === 'profile' && !isLoggedIn) onLoginClick();
+                else setPage(item.id as Page);
+            }} 
+            className={`flex flex-col items-center justify-center w-14 gap-1 ${isActive ? 'text-[#1b4332]' : 'text-slate-300'}`}
+          >
+            <item.icon size={22} strokeWidth={isActive ? 3 : 2} />
+            <span className={`text-[9px] font-black tracking-tight ${isActive ? 'text-[#1b4332]' : 'text-slate-400'}`}>{item.label.toUpperCase()}</span>
           </button>
         );
       })}
