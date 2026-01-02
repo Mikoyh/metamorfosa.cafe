@@ -101,20 +101,19 @@ export default function App() {
     }));
   };
 
-  // Improved NPC Logic (Sequential FIFO + Auto Completion)
+  // Logic Antrean FIFO (First-In, First-Out)
   useEffect(() => {
     const interval = setInterval(() => {
       setAllActiveOrders(prev => {
         if (prev.length === 0) return prev;
         
-        // Process the oldest non-ready order
-        const pendingOrders = prev.filter(o => o.status !== 'READY');
-        if (pendingOrders.length === 0) return prev;
-        
-        const oldestPendingId = pendingOrders[pendingOrders.length - 1].orderId;
+        // Cari pesanan paling pertama (index 0) yang belum berstatus READY
+        const oldestPendingIdx = prev.findIndex(o => o.status !== 'READY');
+        if (oldestPendingIdx === -1) return prev;
 
-        return prev.map((o) => {
-          if (o.orderId === oldestPendingId) {
+        return prev.map((o, idx) => {
+          // Hanya proses pesanan yang paling depan di antrean
+          if (idx === oldestPendingIdx) {
             if (o.status === 'WAITING') return { ...o, status: 'COOKING', countdown: 3 };
             if (o.status === 'COOKING') {
               if (o.countdown && o.countdown > 0) return { ...o, countdown: o.countdown - 1 };
@@ -125,7 +124,7 @@ export default function App() {
         });
       });
 
-      // Clear ready NPC orders after 30 seconds
+      // Bersihkan pesanan NPC yang sudah READY setelah 40 detik
       setAllActiveOrders(prev => {
         const now = Date.now();
         return prev.filter(o => {
@@ -137,8 +136,8 @@ export default function App() {
         });
       });
 
-      // Periodic NPC Spawning
-      if (allActiveOrders.length < 6 && Math.random() > 0.6) {
+      // Spawn NPC Baru (Push ke akhir array agar antre paling belakang)
+      if (allActiveOrders.length < 8 && Math.random() > 0.65) {
         const name = NPC_NAMES[Math.floor(Math.random() * NPC_NAMES.length)];
         const randomItem = MENU_DATA[Math.floor(Math.random() * MENU_DATA.length)];
         const newNpcOrder: ActiveOrder = {
@@ -150,7 +149,7 @@ export default function App() {
           timestamp: Date.now(),
           countdown: 5
         };
-        setAllActiveOrders(prev => [newNpcOrder, ...prev]);
+        setAllActiveOrders(prev => [...prev, newNpcOrder]);
       }
     }, 8000);
     return () => clearInterval(interval);
@@ -208,7 +207,8 @@ export default function App() {
         timestamp: Date.now(),
         notes: orderToPay.notes?.trim() || undefined,
     };
-    setAllActiveOrders(prev => [newOrder, ...prev]);
+    // Tambah ke paling belakang antrean
+    setAllActiveOrders(prev => [...prev, newOrder]);
     setUserHistory(prev => {
         const newHistory = [...orderToPay.items.map(i => i as MenuItem), ...prev];
         return Array.from(new Set(newHistory.map(i => i.id))).map(id => newHistory.find(h => h.id === id)!).slice(0, 10);
@@ -218,6 +218,11 @@ export default function App() {
     setIsPaymentModalOpen(false);
     setIsReceiptOpen(true);
     addXP(150);
+    setPage('home');
+  };
+
+  const handleStaffExit = () => {
+    setIsStaffMode(false);
     setPage('home');
   };
 
@@ -275,13 +280,16 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      <AnimatePresence>
-        {cart.length > 0 && !isCartOpen && page === 'menu' && (
-          <CartInfoBar cart={cart} onOpenCart={() => setIsCartOpen(true)} />
-        )}
-      </AnimatePresence>
-
-      <BottomNav page={page} setPage={handlePageChange} isLoggedIn={isLoggedIn} onLoginClick={() => setIsLoginOpen(true)} isStaffMode={isStaffMode} onLogout={() => setIsLoggedIn(false)} onCartClick={() => setIsCartOpen(true)} cartCount={cart.reduce((a,b)=>a+b.quantity,0)} />
+      <BottomNav 
+        page={page} 
+        setPage={handlePageChange} 
+        isLoggedIn={isLoggedIn} 
+        onLoginClick={() => setIsLoginOpen(true)} 
+        isStaffMode={isStaffMode} 
+        onLogout={isStaffMode ? handleStaffExit : () => setIsLoggedIn(false)} 
+        onCartClick={() => setIsCartOpen(true)} 
+        cartCount={cart.reduce((a,b)=>a+b.quantity,0)} 
+      />
 
       <ProductDetailSheet product={selectedProduct} isOpen={!!selectedProduct} onClose={() => setSelectedProduct(null)} isLoggedIn={isLoggedIn} onLogin={() => setIsLoginOpen(true)} onAddToCart={handleAddToCart} onPesanSekarang={(item, qty) => { setOrderToPay({ items: [{ ...item, quantity: qty }] }); isLoggedIn ? setIsPaymentModalOpen(true) : setIsLoginOpen(true); }} />
       <CartSheet isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} cart={cart} updateQuantity={(id, d) => setCart(prev => prev.map(i => i.id === id ? { ...i, quantity: Math.max(0, i.quantity + d) } : i).filter(i => i.quantity > 0))} checkout={(notes) => { setOrderToPay({ items: cart, notes }); isLoggedIn ? setIsPaymentModalOpen(true) : setIsLoginOpen(true); }} isLoggedIn={isLoggedIn} />

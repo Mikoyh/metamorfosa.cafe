@@ -29,7 +29,7 @@ const BottomNav: React.FC<BottomNavProps> = ({ page, setPage, isLoggedIn, onLogi
   const navItems = isStaffMode ? [
     { id: 'staff', icon: ChefHat, label: 'Queue' },
     { id: 'wall', icon: MessageSquare, label: 'Wall' },
-    { id: 'logout', icon: LogOut, label: 'Logout' },
+    { id: 'logout', icon: LogOut, label: 'Exit' },
   ] : userNavItems;
 
   return (

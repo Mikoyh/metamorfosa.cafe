@@ -37,7 +37,7 @@ const HomePage: React.FC<HomePageProps> = ({ setPage, user, isLoggedIn, onLoginC
   return (
     <div className="pb-36 pt-20 px-4 space-y-6 bg-slate-50/50">
       
-      {/* 1. Meta Hub Luxury Header - Tightened and Professional */}
+      {/* 1. Meta Hub Luxury Header */}
       <section className="bg-white rounded-[2rem] p-6 shadow-xl shadow-green-900/5 border border-slate-100 relative overflow-hidden">
         <div className="absolute top-0 right-0 w-48 h-48 bg-green-50 rounded-full -mr-20 -mt-20 opacity-40 blur-3xl" />
         
@@ -69,7 +69,6 @@ const HomePage: React.FC<HomePageProps> = ({ setPage, user, isLoggedIn, onLoginC
           )}
         </div>
 
-        {/* Store Hours Detail */}
         <div className="grid grid-cols-2 gap-3 mb-5 px-1">
            <div className="flex items-center gap-2 text-[10px] text-slate-500 font-bold">
               <Clock size={12} className="text-[#1b4332]" />
@@ -81,7 +80,6 @@ const HomePage: React.FC<HomePageProps> = ({ setPage, user, isLoggedIn, onLoginC
            </div>
         </div>
 
-        {/* XP Bar Integrated */}
         {isLoggedIn && (
            <div className="bg-slate-50 rounded-2xl p-3 border border-slate-100 mb-5">
               <div className="flex justify-between items-center mb-1.5">
@@ -122,7 +120,7 @@ const HomePage: React.FC<HomePageProps> = ({ setPage, user, isLoggedIn, onLoginC
         </div>
       </section>
 
-      {/* 3. Live Queue (Urutan Antre) */}
+      {/* 3. Live Queue (FIFO Display: Oldest to Newest from Left to Right) */}
       <section>
         <div className="flex justify-between items-center mb-3 px-2">
           <h3 className="text-xs font-black text-[#1b4332]/30 uppercase tracking-[0.2em]">Live Queue</h3>
@@ -135,7 +133,8 @@ const HomePage: React.FC<HomePageProps> = ({ setPage, user, isLoggedIn, onLoginC
              allActiveOrders.map((order, i) => (
                <div key={order.orderId} className={`shrink-0 w-36 p-4 rounded-[1.5rem] bg-white border ${order.user.name === user.name ? 'border-[#1b4332] ring-4 ring-[#1b4332]/5 shadow-lg' : 'border-slate-100 shadow-sm'}`}>
                  <div className="flex justify-between items-start mb-2">
-                    <span className="text-[10px] font-black text-[#1b4332]">#{allActiveOrders.length - i}</span>
+                    {/* Index #1 is the oldest (index 0 in array) */}
+                    <span className="text-[10px] font-black text-[#1b4332]">#{i + 1}</span>
                     <div className={`w-2 h-2 rounded-full ${order.status === 'READY' ? 'bg-blue-500' : 'bg-amber-500'} animate-pulse`} />
                  </div>
                  <p className="text-xs font-black text-slate-800 truncate mb-1">{order.user.name}</p>
@@ -166,7 +165,7 @@ const HomePage: React.FC<HomePageProps> = ({ setPage, user, isLoggedIn, onLoginC
          </section>
       )}
 
-      {/* 5. Recent Purchases (Shortcut Menu) */}
+      {/* 5. Recent Purchases */}
       {isLoggedIn && userHistory.length > 0 && (
          <section>
             <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-4 px-2">Beli Lagi</h3>
