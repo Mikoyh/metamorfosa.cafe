@@ -93,17 +93,17 @@ const HomePage: React.FC<HomePageProps> = ({ setPage, user, isLoggedIn, onLoginC
         )}
 
         <div className="grid grid-cols-3 gap-2 pt-4 border-t border-slate-50">
-          <a href="tel:085891572756" className="flex items-center justify-center gap-2 py-2.5 bg-slate-50 rounded-xl hover:bg-green-50 transition-colors border border-slate-100">
-              <Phone size={14} className="text-[#1b4332]"/>
-              <span className="text-[9px] font-black text-slate-600">CALL</span>
+          <a href="tel:085891572756" className="flex items-center justify-center gap-2 py-2.5 bg-green-50 rounded-xl hover:bg-green-100 transition-colors border border-green-100">
+              <Phone size={14} className="text-green-700"/>
+              <span className="text-[9px] font-black text-green-700">CALL</span>
           </a>
-          <a href="https://instagram.com/metamorfosa.coffee" className="flex items-center justify-center gap-2 py-2.5 bg-slate-50 rounded-xl hover:bg-green-50 transition-colors border border-slate-100">
-              <Instagram size={14} className="text-[#1b4332]"/>
-              <span className="text-[9px] font-black text-slate-600">INSTA</span>
+          <a href="https://instagram.com/metamorfosa.coffee" className="flex items-center justify-center gap-2 py-2.5 bg-pink-50 rounded-xl hover:bg-pink-100 transition-colors border border-pink-100">
+              <Instagram size={14} className="text-pink-600"/>
+              <span className="text-[9px] font-black text-pink-600">INSTA</span>
           </a>
-          <a href="https://gofood.co.id/jakarta/restaurant/metamorfosa-coffee-ruko-perumahan-grend-sutera-4490dc14-3ca9-4165-bbbd-5441e472ba35" target="_blank" className="flex items-center justify-center gap-2 py-2.5 bg-orange-50 rounded-xl hover:bg-orange-100 transition-colors border border-orange-100">
-              <ShoppingBag size={14} className="text-orange-600"/>
-              <span className="text-[9px] font-black text-orange-600 uppercase">GF</span>
+          <a href="https://gofood.co.id/jakarta/restaurant/metamorfosa-coffee-ruko-perumahan-grend-sutera-4490dc14-3ca9-4165-bbbd-5441e472ba35" target="_blank" className="flex items-center justify-center gap-2 py-2.5 bg-red-50 rounded-xl hover:bg-red-100 transition-colors border border-red-100">
+              <ShoppingBag size={14} className="text-red-600"/>
+              <span className="text-[9px] font-black text-red-600 uppercase">GF</span>
           </a>
         </div>
       </section>

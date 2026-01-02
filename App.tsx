@@ -303,7 +303,7 @@ export default function App() {
         isOpen={isStaffPasswordModalOpen} 
         onClose={() => setIsStaffPasswordModalOpen(false)} 
         onSubmit={(pw) => {
-           if (pw === 'metaadmin') {
+           if (pw === 'J4wCH7Mxr5M+m4@') {
              setIsStaffMode(true);
              setPage('staff');
              setIsStaffPasswordModalOpen(false);

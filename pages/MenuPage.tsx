@@ -22,25 +22,32 @@ const MenuPage: React.FC<MenuPageProps> = ({ onProductClick, onAddToCart, isHead
   const handleCategoryClick = (cat: string, e: React.MouseEvent) => {
     setSelectedCategory(cat);
     
-    // Auto-center scroll
     (e.currentTarget as HTMLElement).scrollIntoView({
       behavior: 'smooth',
       block: 'nearest',
       inline: 'center'
     });
 
-    const el = document.getElementById(`section-${cat}`);
-    if (el) {
-        const offset = 180;
-        const bodyRect = document.body.getBoundingClientRect().top;
-        const elementRect = el.getBoundingClientRect().top;
-        const elementPosition = elementRect - bodyRect;
-        const offsetPosition = elementPosition - offset;
+    if (cat !== 'Semua') {
+      const el = document.getElementById(`section-${cat}`);
+      if (el) {
+          const filterHeight = categoriesRef.current?.parentElement?.offsetHeight || 60;
+          const headerHeight = 64; // Always account for header height
+          const offset = filterHeight + headerHeight + 20; // Add 20px margin
 
-        window.scrollTo({
-            top: offsetPosition,
-            behavior: 'smooth'
-        });
+          const bodyRect = document.body.getBoundingClientRect().top;
+          const elementRect = el.getBoundingClientRect().top;
+          const elementPosition = elementRect - bodyRect;
+          const offsetPosition = elementPosition - offset;
+  
+          window.scrollTo({
+              top: offsetPosition,
+              behavior: 'smooth'
+          });
+      }
+    } else {
+        const headerHeight = isHeaderVisible ? 64 : 0;
+        window.scrollTo({ top: -headerHeight, behavior: 'smooth' });
     }
   };
 
@@ -56,11 +63,11 @@ const MenuPage: React.FC<MenuPageProps> = ({ onProductClick, onAddToCart, isHead
 
   return (
     <div className="pb-48 min-h-screen bg-slate-50/30">
+      {/* PERFECTLY SYNCED FILTER BAR using IDENTICAL animation property (translateY) as Header */}
       <MotionDiv 
-        className="fixed left-0 right-0 z-40 bg-white border-b border-slate-100 shadow-sm" 
-        animate={{ y: isHeaderVisible ? 64 : 0 }}
+        className="fixed left-0 right-0 z-40 bg-white border-b border-slate-100 shadow-sm max-w-md mx-auto top-16" // top-16 is 64px
+        animate={{ y: isHeaderVisible ? 0 : '-64px' }}
         transition={{ duration: 0.3, ease: 'easeInOut' }}
-        style={{ top: 0 }}
       >
         <div className="flex gap-2 overflow-x-auto no-scrollbar py-3 px-4" ref={categoriesRef}>
           {CATEGORIES.map(cat => (
@@ -76,7 +83,8 @@ const MenuPage: React.FC<MenuPageProps> = ({ onProductClick, onAddToCart, isHead
         </div>
       </MotionDiv>
       
-      <div className="pt-40 px-4 space-y-8">
+      {/* Content padding top accounts for header (64px) + filter (approx 52px) */}
+      <div className="pt-32 px-4 space-y-8">
         {menuSections.map(section => (
           <div key={section.category} id={`section-${section.category}`}>
             {selectedCategory === 'Semua' && (
