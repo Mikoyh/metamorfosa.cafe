@@ -1,6 +1,6 @@
 
 import React, { useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useAnimationControls } from 'framer-motion';
 import { X, Bell, Clock, ChefHat, Truck, MessageSquare } from 'lucide-react';
 import { QueueStatus, AppNotification } from '../types';
 
@@ -15,14 +15,17 @@ interface NotificationSheetProps {
 }
 
 const NotificationSheet: React.FC<NotificationSheetProps> = ({ isOpen, onClose, queueStatus, notifications, setNotifications }) => {
+  const controls = useAnimationControls();
+
   useEffect(() => {
     if (isOpen) {
+      controls.start({ y: 0 });
       // Mark all as read when opened
       setTimeout(() => {
         setNotifications(prev => prev.map(n => ({ ...n, read: true })));
       }, 500);
     }
-  }, [isOpen]);
+  }, [isOpen, controls]);
 
   const getQueueNotification = () => {
     if (queueStatus === 'IDLE' || queueStatus === 'DELIVERED') return null;
@@ -42,7 +45,7 @@ const NotificationSheet: React.FC<NotificationSheetProps> = ({ isOpen, onClose, 
   const queueNotification = getQueueNotification();
   const allNotifications = queueNotification ? [queueNotification, ...notifications] : notifications;
 
-  const getIcon = (type: 'QUEUE' | 'WALL_REPLY') => {
+  const getIcon = (type: 'QUEUE' | 'WALL_REPLY' | 'SYSTEM') => {
     if (type === 'WALL_REPLY') return <MessageSquare size={20} />;
     if (type === 'QUEUE') {
       if (queueStatus === 'WAITING') return <Clock size={20} />;
@@ -60,10 +63,17 @@ const NotificationSheet: React.FC<NotificationSheetProps> = ({ isOpen, onClose, 
           <MotionDiv 
             drag="y" 
             dragConstraints={{ top: 0 }} 
-            dragElastic={0.2} 
-            onDragEnd={(_, info) => { if (info.offset.y > 100) onClose(); }} 
+            dragElastic={0} 
+            onDragEnd={(_, info) => { 
+              const dismissThreshold = 100;
+              if (info.offset.y > dismissThreshold) {
+                onClose();
+              } else {
+                controls.start({ y: 0 });
+              }
+            }} 
             initial={{ y: '100%' }} 
-            animate={{ y: 0 }} 
+            animate={controls} 
             exit={{ y: '100%' }} 
             transition={{ type: 'spring', damping: 25, stiffness: 200 }} 
             className="fixed bottom-0 left-0 right-0 bg-white rounded-t-[2.5rem] z-[1501] max-h-[90vh] flex flex-col shadow-2xl"

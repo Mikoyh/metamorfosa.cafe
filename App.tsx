@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { AnimatePresence, useScroll, useMotionValueEvent, motion } from 'framer-motion';
 
 import { MenuItem, CartItem, User, Page, QueueStatus, Voucher, ActiveOrder, AppNotification, WallNote } from './types';
-import { MENU_DATA, XP_FOR_LEVEL } from './constants';
+import { MENU_DATA, XP_FOR_LEVEL, NPC_NOTE_SAMPLES, PASTEL_COLORS } from './constants';
 
 // Components
 import Header from './components/Header';
@@ -33,6 +33,10 @@ import QueueHistoryPage from './pages/QueueHistoryPage';
 const NPC_NAMES = ["Alex", "Sisca", "Budi", "Dewi", "Yoga", "Rina", "Joko", "Lina", "Eko", "Maya", "Didi", "Lulu"];
 const MotionDiv = motion.div as any;
 
+interface MenuPageOptions {
+  activateSearch?: boolean;
+}
+
 export default function App() {
   const [page, setPage] = useState<Page>('home');
   const [isLoginOpen, setIsLoginOpen] = useState(false);
@@ -58,9 +62,47 @@ export default function App() {
   const [orderToPay, setOrderToPay] = useState<{ items: CartItem[], notes?: string } | null>(null);
   const [cartFeedback, setCartFeedback] = useState<string | null>(null);
 
+  const [wallNotes, setWallNotes] = useState<WallNote[]>([]);
+  const [menuPageOptions, setMenuPageOptions] = useState<MenuPageOptions | null>(null);
+
+
   const { scrollY } = useScroll();
   const [isHeaderVisible, setIsHeaderVisible] = useState(true);
   const lastScrollY = useRef(0);
+  
+  // Load Wall Notes from localStorage on initial load
+  useEffect(() => {
+    const saved = localStorage.getItem('wall_notes_v2');
+    if (saved) {
+      setWallNotes(JSON.parse(saved));
+    } else {
+      // Seed initial notes if none exist
+      const wallWidth = window.innerWidth > 448 ? 448 : window.innerWidth;
+      const seedNotes: WallNote[] = NPC_NOTE_SAMPLES.map((sample, index) => ({
+           id: `npc-${index}`, text: sample.text, author: sample.author, color: PASTEL_COLORS[index % PASTEL_COLORS.length],
+           x: Math.random() * (wallWidth - 144 - 40) + 20, // 144 is note width
+           y: (Math.random() * (1600 - 300)) + 180, // 1600 is wall height
+           timestamp: Date.now() - Math.random() * 86400000, isNpc: true, reactions: {},
+      }));
+      setWallNotes(seedNotes);
+      localStorage.setItem('wall_notes_v2', JSON.stringify(seedNotes));
+    }
+  }, []);
+
+  // Global Body Scroll Lock
+  useEffect(() => {
+    const isAnyModalOpen = isLoginOpen || isSideNavOpen || !!selectedProduct || isCartOpen || isNotificationOpen || isPaymentModalOpen || isReceiptOpen || isRatingOpen || isStaffPasswordModalOpen;
+    if (isAnyModalOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    // Cleanup on component unmount
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isLoginOpen, isSideNavOpen, selectedProduct, isCartOpen, isNotificationOpen, isPaymentModalOpen, isReceiptOpen, isRatingOpen, isStaffPasswordModalOpen]);
+
 
   // NPC Leaderboard Generator (Top 100)
   const leaderboardData = useMemo(() => {
@@ -159,14 +201,19 @@ export default function App() {
     const direction = latest > lastScrollY.current ? 'down' : 'up';
     if (latest < 50) setIsHeaderVisible(true);
     else if (direction === 'down' && isHeaderVisible) setIsHeaderVisible(false);
-    else if (direction === 'up' && !isHeaderVisible) setIsHeaderVisible(true);
+    else if (direction === 'up' && !isHeaderVisible) setIsHeaderVisible(false);
     lastScrollY.current = latest;
   });
 
-  const handlePageChange = (newPage: Page) => {
+  const handlePageChange = (newPage: Page, options?: MenuPageOptions) => {
     if (newPage === 'profile' && !isLoggedIn) {
       setIsLoginOpen(true);
       return;
+    }
+    if (options) {
+      setMenuPageOptions(options);
+    } else {
+      setMenuPageOptions(null);
     }
     setPage(newPage);
     setIsSideNavOpen(false);
@@ -176,10 +223,11 @@ export default function App() {
   const handleMarkReady = (orderId: string) => {
     const order = allActiveOrders.find(o => o.orderId === orderId);
     if (!order) return;
-    setHistoryOrders(prev => [{ ...order, status: 'READY', timestamp: Date.now() }, ...prev].slice(0, 10));
+    const completedOrder: ActiveOrder = { ...order, status: 'READY', timestamp: Date.now() };
+    setHistoryOrders(prev => [completedOrder, ...prev].slice(0, 10));
     setAllActiveOrders(prev => prev.filter(o => o.orderId !== orderId));
     if (!order.isNpc && order.user.name === user.name) {
-      setLastCompletedOrder({ ...order, status: 'READY' });
+      setLastCompletedOrder(completedOrder);
       setTimeout(() => setIsRatingOpen(true), 1500);
     }
   };
@@ -207,7 +255,6 @@ export default function App() {
         timestamp: Date.now(),
         notes: orderToPay.notes?.trim() || undefined,
     };
-    // Tambah ke paling belakang antrean
     setAllActiveOrders(prev => [...prev, newOrder]);
     setUserHistory(prev => {
         const newHistory = [...orderToPay.items.map(i => i as MenuItem), ...prev];
@@ -257,8 +304,8 @@ export default function App() {
 
       <main className="flex-grow">
         <AnimatePresence mode="wait">
-          {page === 'home' && <HomePage key="home" setPage={handlePageChange} user={user} isLoggedIn={isLoggedIn} onLoginClick={() => setIsLoginOpen(true)} userOrder={allActiveOrders.find(o => !o.isNpc && o.user.name === user.name)} allActiveOrders={allActiveOrders} leaderboard={leaderboardData.slice(0, 5)} userHistory={userHistory} onAddToCart={handleAddToCart} onProductClick={setSelectedProduct} />}
-          {page === 'menu' && <MenuPage key="menu" onProductClick={setSelectedProduct} onAddToCart={handleAddToCart} isHeaderVisible={isHeaderVisible} favorites={user.favorites} toggleFavorite={toggleFavorite} />}
+          {page === 'home' && <HomePage key="home" setPage={handlePageChange} user={user} isLoggedIn={isLoggedIn} onLoginClick={() => setIsLoginOpen(true)} userOrder={allActiveOrders.find(o => !o.isNpc && o.user.name === user.name)} allActiveOrders={allActiveOrders} leaderboard={leaderboardData.slice(0, 5)} userHistory={userHistory} onAddToCart={handleAddToCart} onProductClick={setSelectedProduct} wallNotes={wallNotes} />}
+          {page === 'menu' && <MenuPage key="menu" onProductClick={setSelectedProduct} onAddToCart={handleAddToCart} isHeaderVisible={isHeaderVisible} favorites={user.favorites} toggleFavorite={toggleFavorite} menuOptions={menuPageOptions} />}
           {page === 'staff' && <StaffPage key="staff" activeOrders={allActiveOrders} onMarkReady={handleMarkReady} />}
           {page === 'wall' && <WallPage key="wall" user={{...user, rank: leaderboardData.find(u=>u.name===user.name)?.rank}} addNotification={(n) => setNotifications(prev => [{...n, id: Date.now().toString(), read: false, timestamp: Date.now()} as AppNotification, ...prev])} onLoginClick={() => setIsLoginOpen(true)} isHeaderVisible={isHeaderVisible} isStaffMode={isStaffMode} addXP={() => addXP(30)} />}
           {page === 'shop' && <ShopPage key="shop" user={user} onRedeemVoucher={() => {}} />}
@@ -277,6 +324,12 @@ export default function App() {
           >
             ✅ {cartFeedback} masuk keranjang
           </MotionDiv>
+        )}
+      </AnimatePresence>
+      
+      <AnimatePresence>
+        {page === 'menu' && cart.length > 0 && !isCartOpen && (
+          <CartInfoBar cart={cart} onOpenCart={() => setIsCartOpen(true)} />
         )}
       </AnimatePresence>
 

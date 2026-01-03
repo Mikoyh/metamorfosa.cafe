@@ -1,14 +1,15 @@
 
 import React, { useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { User as UserIcon, Trophy, Star, MapPin, Phone, Instagram, Ticket, ChevronRight, Bell, Clock, ChefHat, Truck, ShoppingBasket, ShoppingBag, Heart, ExternalLink, Zap } from 'lucide-react';
-import { User, Page, QueueStatus, ActiveOrder, MenuItem } from '../types';
-import { XP_FOR_LEVEL, VOUCHER_DATA, FACILITIES_DATA, MENU_DATA } from '../constants';
+import { User as UserIcon, Trophy, Star, MapPin, Phone, Instagram, Ticket, ChevronRight, Bell, Clock, ChefHat, Truck, ShoppingBasket, ShoppingBag, Heart, ExternalLink, Zap, Search } from 'lucide-react';
+import { User, Page, QueueStatus, ActiveOrder, MenuItem, WallNote } from '../types';
+import { XP_FOR_LEVEL, VOUCHER_DATA, FACILITIES_DATA, MENU_DATA, LOGO } from '../constants';
+import WallTicker from '../components/WallTicker';
 
 const MotionDiv = motion.div as any;
 
 interface HomePageProps {
-  setPage: (page: Page) => void;
+  setPage: (page: Page, options?: any) => void;
   user: User;
   isLoggedIn: boolean;
   onLoginClick: () => void;
@@ -18,6 +19,7 @@ interface HomePageProps {
   userHistory: MenuItem[];
   onAddToCart: (item: MenuItem) => void;
   onProductClick: (item: MenuItem) => void;
+  wallNotes: WallNote[];
 }
 
 const checkStoreStatus = () => {
@@ -30,83 +32,103 @@ const checkStoreStatus = () => {
     };
 };
 
-const HomePage: React.FC<HomePageProps> = ({ setPage, user, isLoggedIn, onLoginClick, userOrder, allActiveOrders, leaderboard, userHistory, onAddToCart, onProductClick }) => {
+const HomePage: React.FC<HomePageProps> = ({ setPage, user, isLoggedIn, onLoginClick, userOrder, allActiveOrders, leaderboard, userHistory, onAddToCart, onProductClick, wallNotes }) => {
   const storeStatus = useMemo(() => checkStoreStatus(), []);
   const xpProgress = user.level < XP_FOR_LEVEL.length ? (user.xp / XP_FOR_LEVEL[user.level]) * 100 : 100;
 
   return (
     <div className="pb-36 pt-20 px-4 space-y-6 bg-slate-50/50">
       
-      {/* 1. Meta Hub Luxury Header */}
-      <section className="bg-white rounded-[2rem] p-6 shadow-xl shadow-green-900/5 border border-slate-100 relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-48 h-48 bg-green-50 rounded-full -mr-20 -mt-20 opacity-40 blur-3xl" />
-        
-        <div className="relative z-10 flex justify-between items-start mb-5">
-          <div>
-            <p className="text-[10px] font-black text-[#1b4332]/40 uppercase tracking-[0.3em] mb-1">Metamorfosa Hub</p>
-            <h2 className="text-2xl font-black text-[#1b4332] tracking-tighter leading-none mb-3">
-                Hello, {isLoggedIn ? user.name : 'Meta Guest'}!
-            </h2>
-            <div className="flex flex-wrap gap-2">
-                <div className={`flex items-center gap-1.5 text-[9px] font-black px-2.5 py-1 rounded-lg ${storeStatus.cafeOpen ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-red-100 text-red-700 border border-red-200'}`}>
-                  <div className={`w-1.5 h-1.5 rounded-full ${storeStatus.cafeOpen ? 'bg-green-500' : 'bg-red-500'} animate-pulse`}></div>
-                  {storeStatus.cafeOpen ? 'CAFE: OPEN' : 'CAFE: CLOSED'}
-                </div>
-                <div className={`flex items-center gap-1.5 text-[9px] font-black px-2.5 py-1 rounded-lg ${storeStatus.gofoodOpen ? 'bg-orange-100 text-orange-700 border border-orange-200' : 'bg-slate-100 text-slate-500 border border-slate-200'}`}>
-                  <ShoppingBag size={10} />
-                  {storeStatus.gofoodOpen ? 'GOFOOD: ON' : 'GOFOOD: OFF'}
-                </div>
+      {/* Grouping div to bypass parent's space-y-* issue and control spacing */}
+      <div>
+        {/* 0. Wall of Thoughts Ticker - With margin-bottom */}
+        <div className="mt-2 mb-2">
+          <WallTicker notes={wallNotes} onClick={() => setPage('wall')} />
+        </div>
+
+        {/* 1. Meta Hub Luxury Header - No more negative margin */}
+        <section className="bg-white rounded-[2rem] p-6 shadow-xl shadow-green-900/5 border border-slate-100 relative overflow-hidden flex flex-col gap-4">
+          <div className="absolute top-0 right-0 w-48 h-48 bg-green-50 rounded-full -mr-20 -mt-20 opacity-40 blur-3xl" />
+          
+          <div className="relative z-10 flex justify-between items-start">
+            <div>
+              <p className="text-[10px] font-black text-[#1b4332]/40 uppercase tracking-[0.3em] mb-1">Metamorfosa Hub</p>
+              <h2 className="text-2xl font-black text-[#1b4332] tracking-tighter leading-none mb-3">
+                  Hello, {isLoggedIn ? user.name : 'Meta Guest'}!
+              </h2>
+              <div className="flex flex-wrap gap-2">
+                  <div className={`flex items-center gap-1.5 text-[9px] font-black px-2.5 py-1 rounded-lg ${storeStatus.cafeOpen ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-red-100 text-red-700 border border-red-200'}`}>
+                    <div className={`w-1.5 h-1.5 rounded-full ${storeStatus.cafeOpen ? 'bg-green-500' : 'bg-red-500'} animate-pulse`}></div>
+                    {storeStatus.cafeOpen ? 'CAFE: OPEN' : 'CAFE: CLOSED'}
+                  </div>
+                  <div className={`flex items-center gap-1.5 text-[9px] font-black px-2.5 py-1 rounded-lg ${storeStatus.gofoodOpen ? 'bg-orange-100 text-orange-700 border border-orange-200' : 'bg-slate-100 text-slate-500 border border-slate-200'}`}>
+                    <ShoppingBag size={10} />
+                    {storeStatus.gofoodOpen ? 'GOFOOD: ON' : 'GOFOOD: OFF'}
+                  </div>
+              </div>
             </div>
+            {isLoggedIn ? (
+              <div onClick={() => setPage('profile')} className="w-12 h-12 bg-[#1b4332] text-white rounded-2xl flex items-center justify-center font-black text-lg shadow-xl shadow-green-900/30 active:scale-95 transition-all">
+                 {user.name[0]}
+              </div>
+            ) : (
+              <button onClick={onLoginClick} className="w-12 h-12 bg-white border border-slate-200 rounded-2xl flex items-center justify-center text-[#1b4332] shadow-sm active:scale-95 transition-all">
+                <UserIcon size={20} />
+              </button>
+            )}
           </div>
-          {isLoggedIn ? (
-            <div onClick={() => setPage('profile')} className="w-12 h-12 bg-[#1b4332] text-white rounded-2xl flex items-center justify-center font-black text-lg shadow-xl shadow-green-900/30 active:scale-95 transition-all">
-               {user.name[0]}
-            </div>
-          ) : (
-            <button onClick={onLoginClick} className="w-12 h-12 bg-white border border-slate-200 rounded-2xl flex items-center justify-center text-[#1b4332] shadow-sm active:scale-95 transition-all">
-              <UserIcon size={20} />
-            </button>
+          
+          <div className="grid grid-cols-2 gap-3 px-1">
+             <div className="flex items-center gap-2 text-[10px] text-slate-500 font-bold">
+                <Clock size={12} className="text-[#1b4332]" />
+                <span>Cafe: 09:00 - 23:30</span>
+             </div>
+             <div className="flex items-center gap-2 text-[10px] text-slate-500 font-bold">
+                <Truck size={12} className="text-orange-500" />
+                <span>GF: 15:30 - 23:30</span>
+             </div>
+          </div>
+
+          {isLoggedIn && (
+             <div className="bg-slate-50 rounded-2xl p-3 border border-slate-100">
+                <div className="flex justify-between items-center mb-1.5">
+                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1"><Zap size={10} fill="currentColor"/> Level Progress</span>
+                  <span className="text-[9px] font-black text-[#1b4332]">LV. {user.level} • {Math.round(xpProgress)}%</span>
+                </div>
+                <div className="h-2 bg-white rounded-full overflow-hidden p-0.5 border border-slate-100">
+                  <MotionDiv initial={{ width: 0 }} animate={{ width: `${xpProgress}%` }} className="h-full bg-gradient-to-r from-green-400 to-[#1b4332] rounded-full" />
+                </div>
+             </div>
           )}
-        </div>
 
-        <div className="grid grid-cols-2 gap-3 mb-5 px-1">
-           <div className="flex items-center gap-2 text-[10px] text-slate-500 font-bold">
-              <Clock size={12} className="text-[#1b4332]" />
-              <span>Cafe: 09:00 - 23:30</span>
-           </div>
-           <div className="flex items-center gap-2 text-[10px] text-slate-500 font-bold">
-              <Truck size={12} className="text-orange-500" />
-              <span>GF: 15:30 - 23:30</span>
-           </div>
-        </div>
-
-        {isLoggedIn && (
-           <div className="bg-slate-50 rounded-2xl p-3 border border-slate-100 mb-5">
-              <div className="flex justify-between items-center mb-1.5">
-                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1"><Zap size={10} fill="currentColor"/> Level Progress</span>
-                <span className="text-[9px] font-black text-[#1b4332]">LV. {user.level} • {Math.round(xpProgress)}%</span>
-              </div>
-              <div className="h-2 bg-white rounded-full overflow-hidden p-0.5 border border-slate-100">
-                <MotionDiv initial={{ width: 0 }} animate={{ width: `${xpProgress}%` }} className="h-full bg-gradient-to-r from-green-400 to-[#1b4332] rounded-full" />
-              </div>
-           </div>
-        )}
-
-        <div className="grid grid-cols-3 gap-2 pt-4 border-t border-slate-50">
-          <a href="tel:085891572756" className="flex items-center justify-center gap-2 py-2.5 bg-green-50 rounded-xl hover:bg-green-100 transition-colors border border-green-100">
-              <Phone size={14} className="text-green-700"/>
-              <span className="text-[9px] font-black text-green-700">CALL</span>
-          </a>
-          <a href="https://instagram.com/metamorfosa.coffee" className="flex items-center justify-center gap-2 py-2.5 bg-pink-50 rounded-xl hover:bg-pink-100 transition-colors border border-pink-100">
-              <Instagram size={14} className="text-pink-600"/>
-              <span className="text-[9px] font-black text-pink-600">INSTA</span>
-          </a>
-          <a href="https://gofood.co.id/jakarta/restaurant/metamorfosa-coffee-ruko-perumahan-grend-sutera-4490dc14-3ca9-4165-bbbd-5441e472ba35" target="_blank" className="flex items-center justify-center gap-2 py-2.5 bg-red-50 rounded-xl hover:bg-red-100 transition-colors border border-red-100">
-              <ShoppingBag size={14} className="text-red-600"/>
-              <span className="text-[9px] font-black text-red-600 uppercase">GF</span>
-          </a>
-        </div>
-      </section>
+          <div className="grid grid-cols-3 gap-2 pt-4 border-t border-slate-50">
+            <a href="tel:085891572756" className="flex items-center justify-center gap-2 py-2.5 bg-green-50 rounded-xl hover:bg-green-100 transition-colors border border-green-100">
+                <Phone size={14} className="text-green-700"/>
+                <span className="text-[9px] font-black text-green-700">CALL</span>
+            </a>
+            <a href="https://instagram.com/metamorfosa.coffee" className="flex items-center justify-center gap-2 py-2.5 bg-pink-50 rounded-xl hover:bg-pink-100 transition-colors border border-pink-100">
+                <Instagram size={14} className="text-pink-600"/>
+                <span className="text-[9px] font-black text-pink-600">INSTA</span>
+            </a>
+            <a href="https://gofood.co.id/jakarta/restaurant/metamorfosa-coffee-ruko-perumahan-grend-sutera-4490dc14-3ca9-4165-bbbd-5441e472ba35" target="_blank" className="flex items-center justify-center gap-2 py-2.5 bg-red-50 rounded-xl hover:bg-red-100 transition-colors border border-red-100">
+                <ShoppingBag size={14} className="text-red-600"/>
+                <span className="text-[9px] font-black text-red-600 uppercase">GF</span>
+            </a>
+          </div>
+          
+          {/* NEW SEARCH TRIGGER BAR --- REPOSITIONED */}
+          <div 
+            onClick={() => setPage('menu', { activateSearch: true })}
+            className="w-full flex items-center justify-between p-3 bg-white rounded-2xl border-2 border-[#1b4332]/20 shadow-sm cursor-pointer active:scale-[0.98] transition-transform"
+          >
+            <div className="flex items-center gap-3">
+              <Search size={16} className="text-[#1b4332]/50" />
+              <span className="text-sm text-slate-400 font-medium">Cari menu favoritmu...</span>
+            </div>
+            {LOGO}
+          </div>
+        </section>
+      </div>
 
       {/* 2. Facilities */}
       <section className="px-2">

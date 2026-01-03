@@ -85,7 +85,12 @@ const ProductDetailSheet: React.FC<ProductDetailSheetProps> = ({ product, isOpen
                   + KERANJANG
                 </button>
                 <button 
-                  onClick={() => { onPesanSekarang(product, quantity); onClose(); }} 
+                  onClick={() => { 
+                    onPesanSekarang(product, quantity);
+                    if (isLoggedIn) {
+                      onClose();
+                    }
+                  }} 
                   className="py-5 rounded-[2rem] font-black text-white bg-[#1b4332] shadow-2xl shadow-green-900/40 active:scale-95 transition-all flex items-center justify-center gap-3 text-sm tracking-tighter"
                 >
                   <CreditCard size={22} strokeWidth={3} />

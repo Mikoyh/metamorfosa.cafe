@@ -1,6 +1,6 @@
 
-import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence, useAnimationControls } from 'framer-motion';
 import { X, ShoppingCart, Minus, Plus, Trash2, Trophy } from 'lucide-react';
 import { CartItem } from '../types';
 
@@ -18,6 +18,13 @@ interface CartSheetProps {
 const CartSheet: React.FC<CartSheetProps> = ({ isOpen, onClose, cart, updateQuantity, checkout, isLoggedIn }) => {
   const [orderNotes, setOrderNotes] = useState('');
   const total = cart.reduce((acc, item) => acc + item.price * item.quantity, 0);
+  const controls = useAnimationControls();
+
+  useEffect(() => {
+    if (isOpen) {
+      controls.start({ y: 0 });
+    }
+  }, [isOpen, controls]);
 
   return (
     <AnimatePresence>
@@ -27,10 +34,17 @@ const CartSheet: React.FC<CartSheetProps> = ({ isOpen, onClose, cart, updateQuan
           <MotionDiv 
             drag="y" 
             dragConstraints={{ top: 0 }} 
-            dragElastic={0.2} 
-            onDragEnd={(_, info) => { if (info.offset.y > 100) onClose(); }} 
+            dragElastic={0} 
+            onDragEnd={(_, info) => { 
+              const dismissThreshold = 100;
+              if (info.offset.y > dismissThreshold) {
+                onClose();
+              } else {
+                controls.start({ y: 0 });
+              }
+            }} 
             initial={{ y: '100%' }} 
-            animate={{ y: 0 }} 
+            animate={controls}
             exit={{ y: '100%' }} 
             transition={{ type: 'spring', damping: 25, stiffness: 200 }} 
             className="fixed bottom-0 left-0 right-0 bg-white rounded-t-[2.5rem] z-[1501] max-h-[90vh] flex flex-col shadow-2xl"

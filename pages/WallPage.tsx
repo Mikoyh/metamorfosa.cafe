@@ -47,9 +47,11 @@ interface WallPageProps {
   onLoginClick: () => void;
   isHeaderVisible: boolean;
   isStaffMode: boolean;
+  // FIX: Add the addXP prop to align with its usage in App.tsx, allowing the component to grant experience points.
+  addXP: () => void;
 }
 
-const WallPage: React.FC<WallPageProps> = ({ user, addNotification, onLoginClick, isHeaderVisible, isStaffMode }) => {
+const WallPage: React.FC<WallPageProps> = ({ user, addNotification, onLoginClick, isHeaderVisible, isStaffMode, addXP }) => {
     const [notes, setNotes] = useState<WallNote[]>([]);
     const [inputText, setInputText] = useState('');
     const [selectedColor, setSelectedColor] = useState(PASTEL_COLORS[0]);
@@ -173,6 +175,8 @@ const WallPage: React.FC<WallPageProps> = ({ user, addNotification, onLoginClick
         }
         
         saveNotes([...notes, newNote]);
+        // FIX: Award experience points when a user successfully posts a new note.
+        addXP();
         setInputText('');
         setReplyingTo(null);
     };
