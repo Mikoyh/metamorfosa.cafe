@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Plus, Minus, ShoppingBag, CreditCard } from 'lucide-react';
+import { X, Plus, Minus, ShoppingBag, CreditCard, XCircle } from 'lucide-react';
 import { MenuItem } from '../types';
 import { useLongPress } from '../hooks/useLongPress';
 
@@ -15,9 +15,11 @@ interface ProductDetailSheetProps {
   onPesanSekarang: (item: MenuItem, quantity: number) => void;
   isLoggedIn: boolean;
   onLogin: () => void;
+  isCafeOpen: boolean;
+  isAvailable: boolean;
 }
 
-const ProductDetailSheet: React.FC<ProductDetailSheetProps> = ({ product, isOpen, onClose, onAddToCart, onPesanSekarang, isLoggedIn, onLogin }) => {
+const ProductDetailSheet: React.FC<ProductDetailSheetProps> = ({ product, isOpen, onClose, onAddToCart, onPesanSekarang, isLoggedIn, onLogin, isCafeOpen, isAvailable }) => {
   const [quantity, setQuantity] = useState(1);
 
   useEffect(() => {
@@ -44,7 +46,7 @@ const ProductDetailSheet: React.FC<ProductDetailSheetProps> = ({ product, isOpen
             transition={{ type: 'spring', damping: 25, stiffness: 200 }} 
             className="fixed bottom-0 left-0 right-0 bg-white z-[1101] rounded-t-[3rem] overflow-hidden max-h-[95vh] flex flex-col shadow-2xl"
           >
-            <div className="relative h-80 w-full">
+            <div className={`relative h-80 w-full ${!isAvailable || !isCafeOpen ? 'filter grayscale' : ''}`}>
               <img src={product.image} className="w-full h-full object-cover" />
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
               <button onClick={onClose} className="absolute top-6 right-6 bg-white/20 text-white p-3 rounded-full backdrop-blur-xl border border-white/30 shadow-lg active:scale-90 transition-transform">
@@ -65,12 +67,19 @@ const ProductDetailSheet: React.FC<ProductDetailSheetProps> = ({ product, isOpen
               
               <p className="text-slate-500 text-base leading-relaxed mb-10 font-medium">{product.description || "Menu andalan kami yang diolah dengan resep rahasia dan bahan-bahan premium pilihan untuk rasa yang tak terlupakan."}</p>
               
-              <div className="flex items-center justify-between bg-slate-50 p-6 rounded-[2.5rem] border border-slate-100 shadow-inner">
+               {!isAvailable && (
+                <div className="flex items-center justify-center gap-3 text-red-600 bg-red-50 p-4 rounded-[2rem] mb-6 border-2 border-dashed border-red-100">
+                  <XCircle size={24} />
+                  <span className="font-bold text-lg">Stok produk sedang habis.</span>
+                </div>
+              )}
+
+              <div className={`flex items-center justify-between bg-slate-50 p-6 rounded-[2.5rem] border border-slate-100 shadow-inner transition-opacity ${!isAvailable ? 'opacity-50' : ''}`}>
                 <span className="font-black text-slate-800 tracking-tight text-sm uppercase">Pilih Jumlah</span>
                 <div className="flex items-center gap-6">
-                  <button {...minusHandlers} className="w-14 h-14 rounded-2xl bg-white border-2 border-slate-200 flex items-center justify-center text-slate-400 active:bg-red-50 active:text-red-500 active:border-red-100 transition-all shadow-sm"><Minus size={24} strokeWidth={4} /></button>
+                  <button {...minusHandlers} disabled={!isAvailable} className="w-14 h-14 rounded-2xl bg-white border-2 border-slate-200 flex items-center justify-center text-slate-400 active:bg-red-50 active:text-red-500 active:border-red-100 transition-all shadow-sm disabled:opacity-50"><Minus size={24} strokeWidth={4} /></button>
                   <span className="w-10 text-center font-black text-3xl text-[#1b4332]">{quantity}</span>
-                  <button {...plusHandlers} className="w-14 h-14 rounded-2xl bg-[#1b4332] text-white flex items-center justify-center shadow-xl shadow-green-900/30 active:scale-90 transition-transform"><Plus size={24} strokeWidth={4} /></button>
+                  <button {...plusHandlers} disabled={!isAvailable} className="w-14 h-14 rounded-2xl bg-[#1b4332] text-white flex items-center justify-center shadow-xl shadow-green-900/30 active:scale-90 transition-transform disabled:opacity-50 disabled:bg-slate-300"><Plus size={24} strokeWidth={4} /></button>
                 </div>
               </div>
             </div>
@@ -79,7 +88,8 @@ const ProductDetailSheet: React.FC<ProductDetailSheetProps> = ({ product, isOpen
               <div className="grid grid-cols-2 gap-4">
                 <button 
                   onClick={() => { onAddToCart({ ...product, quantity }); onClose(); }} 
-                  className="py-5 rounded-[2rem] font-black text-[#1b4332] bg-white border-4 border-[#1b4332] active:scale-95 transition-all flex items-center justify-center gap-3 text-sm tracking-tighter"
+                  disabled={!isAvailable}
+                  className="py-5 rounded-[2rem] font-black text-[#1b4332] bg-white border-4 border-[#1b4332] active:scale-95 transition-all flex items-center justify-center gap-3 text-sm tracking-tighter disabled:bg-slate-100 disabled:text-slate-400 disabled:border-slate-200"
                 >
                   <ShoppingBag size={22} strokeWidth={3} />
                   + KERANJANG
@@ -87,11 +97,10 @@ const ProductDetailSheet: React.FC<ProductDetailSheetProps> = ({ product, isOpen
                 <button 
                   onClick={() => { 
                     onPesanSekarang(product, quantity);
-                    if (isLoggedIn) {
-                      onClose();
-                    }
+                    if (isLoggedIn && isCafeOpen) onClose();
                   }} 
-                  className="py-5 rounded-[2rem] font-black text-white bg-[#1b4332] shadow-2xl shadow-green-900/40 active:scale-95 transition-all flex items-center justify-center gap-3 text-sm tracking-tighter"
+                  disabled={!isAvailable}
+                  className="py-5 rounded-[2rem] font-black text-white bg-[#1b4332] shadow-2xl shadow-green-900/40 active:scale-95 transition-all flex items-center justify-center gap-3 text-sm tracking-tighter disabled:bg-slate-400 disabled:shadow-none"
                 >
                   <CreditCard size={22} strokeWidth={3} />
                   PESAN LANGSUNG

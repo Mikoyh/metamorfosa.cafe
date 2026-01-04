@@ -7,6 +7,7 @@ export interface MenuItem {
   image: string;
   description?: string;
   isTopPick?: boolean;
+  isAvailable?: boolean; // Added for stock management
 }
 
 export interface CartItem extends MenuItem {
@@ -82,7 +83,7 @@ export interface BlockedUser {
 
 export type QueueStatus = 'IDLE' | 'WAITING' | 'COOKING' | 'READY' | 'DELIVERED';
 
-export type Page = 'home' | 'menu' | 'leaderboard' | 'shop' | 'wall' | 'profile' | 'staff' | 'voucher-promo' | 'queue-history' | 'edit-profile';
+export type Page = 'home' | 'menu' | 'leaderboard' | 'shop' | 'wall' | 'profile' | 'staff' | 'voucher-promo' | 'queue-history' | 'edit-profile' | 'staff-settings';
 
 export interface AppNotification {
   id: string;
@@ -92,3 +93,8 @@ export interface AppNotification {
   read: boolean;
   timestamp: number;
 }
+
+export type ManualCafeStatus = {
+  status: 'auto' | 'open' | 'closed';
+  closedUntil?: string; // ISO date string for temporary closures
+};

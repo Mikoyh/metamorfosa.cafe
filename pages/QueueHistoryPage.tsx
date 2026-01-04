@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Clock, CheckCircle2, ShoppingBag, ChefHat, User as UserIcon, Timer } from 'lucide-react';
+import { Clock, CheckCircle2, ShoppingBag, ChefHat, User as UserIcon, Timer, XCircle } from 'lucide-react';
 import { ActiveOrder, User, Page } from '../types';
 import Avatar from '../components/Avatar';
 import { PROFILE_BANNERS } from '../constants';
@@ -14,9 +14,10 @@ interface QueueHistoryPageProps {
   user: User;
   setPage: (page: Page, data?: any) => void;
   leaderboardData: User[];
+  isCafeOpen: boolean;
 }
 
-const QueueHistoryPage: React.FC<QueueHistoryPageProps> = ({ activeOrders, historyOrders, user, setPage }) => {
+const QueueHistoryPage: React.FC<QueueHistoryPageProps> = ({ activeOrders, historyOrders, user, setPage, isCafeOpen }) => {
   const getBannerStyle = (bannerId?: string) => {
     if (!bannerId) return {};
     const banner = PROFILE_BANNERS.find(b => b.id === bannerId);
@@ -43,14 +44,20 @@ const QueueHistoryPage: React.FC<QueueHistoryPageProps> = ({ activeOrders, histo
         {/* Live Queue */}
         <section>
           <div className="flex justify-between items-center mb-6 px-2">
-            <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest">Sedang Diproses ({activeOrders.length})</h3>
-            <div className="flex items-center gap-1.5 text-[10px] font-black text-green-600 bg-green-50 px-3 py-1 rounded-full uppercase">
-               <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" /> Live Updating
+            <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest">Sedang Diproses ({isCafeOpen ? activeOrders.length : 0})</h3>
+            <div className={`flex items-center gap-1.5 text-[10px] font-black px-3 py-1 rounded-full uppercase ${isCafeOpen ? 'text-green-600 bg-green-50' : 'text-red-600 bg-red-50'}`}>
+               <div className={`w-1.5 h-1.5 rounded-full ${isCafeOpen ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
+               {isCafeOpen ? 'Live Updating' : 'Kafe Tutup'}
             </div>
           </div>
           
           <div className="space-y-4">
-            {activeOrders.length === 0 ? (
+            {!isCafeOpen ? (
+                <div className="text-center py-10 bg-white rounded-[2rem] border border-dashed border-red-200 flex flex-col items-center gap-4">
+                    <XCircle className="text-red-400" size={24} />
+                    <p className="text-xs text-red-700 font-bold">KAFE SEDANG TUTUP</p>
+                </div>
+            ) : activeOrders.length === 0 ? (
               <div className="text-center py-10 bg-white rounded-[2rem] border border-dashed border-slate-200">
                 <p className="text-xs text-slate-400 font-bold">BELUM ADA ANTREAN AKTIF</p>
               </div>

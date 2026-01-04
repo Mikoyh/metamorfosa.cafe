@@ -1,7 +1,7 @@
 
 import React, { useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { User as UserIcon, Trophy, Star, Phone, Instagram, Clock, Truck, ShoppingBasket, ShoppingBag, Heart, Zap, Search } from 'lucide-react';
+import { User as UserIcon, Trophy, Star, Phone, Instagram, Clock, Truck, ShoppingBasket, ShoppingBag, Heart, Zap, Search, XCircle } from 'lucide-react';
 import { User, Page, ActiveOrder, MenuItem, WallNote } from '../types';
 import { XP_FOR_LEVEL, FACILITIES_DATA, MENU_DATA, LOGO, PROFILE_BANNERS } from '../constants';
 import WallTicker from '../components/WallTicker';
@@ -22,20 +22,10 @@ interface HomePageProps {
   onProductClick: (item: MenuItem) => void;
   wallNotes: WallNote[];
   isBirthday: boolean;
+  isCafeOpen: boolean;
 }
 
-const checkStoreStatus = () => {
-    const now = new Date();
-    const time = now.getHours() + now.getMinutes() / 60;
-    return { 
-      cafeOpen: time >= 9 && time < 23.5,
-      gofoodOpen: time >= 15.5 && time < 23.5,
-      timeStr: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    };
-};
-
-const HomePage: React.FC<HomePageProps> = ({ setPage, user, isLoggedIn, onLoginClick, userOrder, allActiveOrders, leaderboard, userHistory, onAddToCart, onProductClick, wallNotes, isBirthday }) => {
-  const storeStatus = useMemo(() => checkStoreStatus(), []);
+const HomePage: React.FC<HomePageProps> = ({ setPage, user, isLoggedIn, onLoginClick, userOrder, allActiveOrders, leaderboard, userHistory, onAddToCart, onProductClick, wallNotes, isBirthday, isCafeOpen }) => {
   const xpProgress = user.level < XP_FOR_LEVEL.length ? (user.xp / XP_FOR_LEVEL[user.level]) * 100 : 100;
 
   const getBannerStyle = (bannerId?: string) => {
@@ -72,13 +62,13 @@ const HomePage: React.FC<HomePageProps> = ({ setPage, user, isLoggedIn, onLoginC
                   {isBirthday ? `🎉 HBD, ${user.name}!` : `Hello, ${isLoggedIn ? user.name : 'Meta Guest'}!`}
               </h2>
               <div className="flex flex-wrap gap-2">
-                  <div className={`flex items-center gap-1.5 text-[9px] font-black px-2.5 py-1 rounded-lg ${storeStatus.cafeOpen ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-red-100 text-red-700 border border-red-200'}`}>
-                    <div className={`w-1.5 h-1.5 rounded-full ${storeStatus.cafeOpen ? 'bg-green-500' : 'bg-red-500'} animate-pulse`}></div>
-                    {storeStatus.cafeOpen ? 'CAFE: OPEN' : 'CAFE: CLOSED'}
+                  <div className={`flex items-center gap-1.5 text-[9px] font-black px-2.5 py-1 rounded-lg ${isCafeOpen ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-red-100 text-red-700 border border-red-200'}`}>
+                    <div className={`w-1.5 h-1.5 rounded-full ${isCafeOpen ? 'bg-green-500' : 'bg-red-500'} animate-pulse`}></div>
+                    {isCafeOpen ? 'CAFE: OPEN' : 'CAFE: CLOSED'}
                   </div>
-                  <div className={`flex items-center gap-1.5 text-[9px] font-black px-2.5 py-1 rounded-lg ${storeStatus.gofoodOpen ? 'bg-orange-100 text-orange-700 border border-orange-200' : 'bg-slate-100 text-slate-500 border border-slate-200'}`}>
+                   <div className={`flex items-center gap-1.5 text-[9px] font-black px-2.5 py-1 rounded-lg ${isCafeOpen ? 'bg-orange-100 text-orange-700 border border-orange-200' : 'bg-slate-100 text-slate-500 border border-slate-200'}`}>
                     <ShoppingBag size={10} />
-                    {storeStatus.gofoodOpen ? 'GOFOOD: ON' : 'GOFOOD: OFF'}
+                    {isCafeOpen ? 'GOFOOD: ON' : 'GOFOOD: OFF'}
                   </div>
               </div>
             </div>
@@ -160,31 +150,41 @@ const HomePage: React.FC<HomePageProps> = ({ setPage, user, isLoggedIn, onLoginC
           <h3 className="text-xs font-black text-[#1b4332]/30 uppercase tracking-[0.2em]">Live Queue</h3>
           <button onClick={() => setPage('queue-history')} className="text-[10px] font-black text-[#1b4332] uppercase">Lihat Semua</button>
         </div>
-        <div className="flex gap-3 overflow-x-auto no-scrollbar py-1 -mx-4 px-4">
-           {allActiveOrders.length === 0 ? (
-             <p className="text-[10px] font-bold text-slate-300 uppercase py-4 px-2">Belum ada antrean...</p>
-           ) : (
-             allActiveOrders.map((order, i) => (
-               <div key={order.orderId} onClick={() => setPage('profile', { user: order.user })} style={getBannerStyle(order.user.bannerId)} className={`relative shrink-0 w-36 p-4 rounded-[1.5rem] bg-white border overflow-hidden active:scale-95 transition-transform cursor-pointer ${order.user.name === user.name ? 'ring-4 ring-[#1b4332]/20 shadow-lg' : 'border-slate-100 shadow-sm'}`}>
-                 <div className="absolute inset-0 bg-black/20" />
-                 {isUserBirthday(order.user.birthday) && <div className="absolute top-1.5 right-1.5 text-lg animate-pulse">🎉</div>}
-                 <div className="relative z-10 text-white">
-                    <div className="flex justify-between items-start mb-2">
-                        <span className="text-[10px] font-black bg-black/20 px-1.5 py-0.5 rounded-md drop-shadow-sm">#{i + 1}</span>
-                        <div className={`w-2 h-2 rounded-full ${order.status === 'READY' ? 'bg-blue-300' : 'bg-amber-300'} ring-2 ring-white/50 animate-pulse`} />
+        {!isCafeOpen ? (
+            <div className="bg-red-50 p-4 rounded-2xl border border-red-100 flex items-center gap-3">
+                <XCircle className="text-red-500" />
+                <div>
+                    <p className="text-sm font-bold text-red-800">Kafe Sedang Tutup</p>
+                    <p className="text-xs text-red-700">Antrean akan dimulai saat kafe buka.</p>
+                </div>
+            </div>
+        ) : (
+            <div className="flex gap-3 overflow-x-auto no-scrollbar py-1 -mx-4 px-4">
+            {allActiveOrders.length === 0 ? (
+                <p className="text-[10px] font-bold text-slate-300 uppercase py-4 px-2">Belum ada antrean...</p>
+            ) : (
+                allActiveOrders.map((order, i) => (
+                <div key={order.orderId} onClick={() => setPage('profile', { user: order.user })} style={getBannerStyle(order.user.bannerId)} className={`relative shrink-0 w-36 p-4 rounded-[1.5rem] bg-white border overflow-hidden active:scale-95 transition-transform cursor-pointer ${order.user.name === user.name ? 'ring-4 ring-[#1b4332]/20 shadow-lg' : 'border-slate-100 shadow-sm'}`}>
+                    <div className="absolute inset-0 bg-black/20" />
+                    {isUserBirthday(order.user.birthday) && <div className="absolute top-1.5 right-1.5 text-lg animate-pulse">🎉</div>}
+                    <div className="relative z-10 text-white">
+                        <div className="flex justify-between items-start mb-2">
+                            <span className="text-[10px] font-black bg-black/20 px-1.5 py-0.5 rounded-md drop-shadow-sm">#{i + 1}</span>
+                            <div className={`w-2 h-2 rounded-full ${order.status === 'READY' ? 'bg-blue-300' : 'bg-amber-300'} ring-2 ring-white/50 animate-pulse`} />
+                        </div>
+                        <p className="text-xs font-black drop-shadow-sm truncate mb-1">{order.user.name}</p>
+                        <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-md drop-shadow-sm ${order.status === 'WAITING' ? 'bg-amber-400 text-amber-900' : order.status === 'COOKING' ? 'bg-green-400 text-green-900' : 'bg-blue-400 text-blue-900'}`}>
+                            {order.status}
+                        </span>
                     </div>
-                    <p className="text-xs font-black drop-shadow-sm truncate mb-1">{order.user.name}</p>
-                    <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-md drop-shadow-sm ${order.status === 'WAITING' ? 'bg-amber-400 text-amber-900' : order.status === 'COOKING' ? 'bg-green-400 text-green-900' : 'bg-blue-400 text-blue-900'}`}>
-                        {order.status}
-                    </span>
-                 </div>
-               </div>
-             ))
-           )}
-        </div>
+                </div>
+                ))
+            )}
+            </div>
+        )}
       </section>
 
-      {userOrder && (
+      {isCafeOpen && userOrder && (
          <section onClick={() => setPage('queue-history')} className="cursor-pointer active:scale-[0.98] transition-all">
             <div className="bg-[#1b4332] p-5 rounded-[2rem] text-white shadow-2xl relative overflow-hidden">
                 <ShoppingBasket className="absolute -right-6 -bottom-6 w-32 h-32 opacity-10 rotate-12" />

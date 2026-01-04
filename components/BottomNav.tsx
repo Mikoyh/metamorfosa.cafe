@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Home, MessageSquare, ShoppingBag, ShoppingCart, Trophy, User as UserIcon, ChefHat, LogOut } from 'lucide-react';
+import { Home, MessageSquare, ShoppingBag, ShoppingCart, Trophy, User as UserIcon, ChefHat, LogOut, Settings } from 'lucide-react';
 import { Page } from '../types';
 
 const MotionDiv = motion.div as any;
@@ -29,6 +29,7 @@ const BottomNav: React.FC<BottomNavProps> = ({ page, setPage, isLoggedIn, onLogi
   const navItems = isStaffMode ? [
     { id: 'staff', icon: ChefHat, label: 'Queue' },
     { id: 'wall', icon: MessageSquare, label: 'Wall' },
+    { id: 'staff-settings', icon: Settings, label: 'Settings' },
     { id: 'logout', icon: LogOut, label: 'Exit' },
   ] : userNavItems;
 
