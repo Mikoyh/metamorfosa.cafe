@@ -2,7 +2,9 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Clock, CheckCircle2, ShoppingBag, ChefHat, User as UserIcon, Timer } from 'lucide-react';
-import { ActiveOrder, User } from '../types';
+import { ActiveOrder, User, Page } from '../types';
+import Avatar from '../components/Avatar';
+import { PROFILE_BANNERS } from '../constants';
 
 const MotionDiv = motion.div as any;
 
@@ -10,9 +12,26 @@ interface QueueHistoryPageProps {
   activeOrders: ActiveOrder[];
   historyOrders: ActiveOrder[];
   user: User;
+  setPage: (page: Page, data?: any) => void;
+  leaderboardData: User[];
 }
 
-const QueueHistoryPage: React.FC<QueueHistoryPageProps> = ({ activeOrders, historyOrders, user }) => {
+const QueueHistoryPage: React.FC<QueueHistoryPageProps> = ({ activeOrders, historyOrders, user, setPage }) => {
+  const getBannerStyle = (bannerId?: string) => {
+    if (!bannerId) return {};
+    const banner = PROFILE_BANNERS.find(b => b.id === bannerId);
+    if (!banner) return {};
+    if (banner.type === 'pattern') return banner.value;
+    return {};
+  };
+
+  const isUserBirthday = (birthday?: string) => {
+    if (!birthday) return false;
+    const today = new Date();
+    const [year, month, day] = birthday.split('-').map(Number);
+    return today.getMonth() === month - 1 && today.getDate() === day;
+  };
+
   return (
     <div className="pt-24 pb-32 px-6 min-h-screen bg-slate-50">
       <div className="mb-10">
@@ -37,36 +56,37 @@ const QueueHistoryPage: React.FC<QueueHistoryPageProps> = ({ activeOrders, histo
               </div>
             ) : (
               <AnimatePresence>
-                {activeOrders.map((order, i) => (
+                {activeOrders.map((order) => (
                   <MotionDiv 
                     key={order.orderId}
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className={`bg-white p-5 rounded-[2rem] shadow-sm border ${order.user.name === user.name ? 'border-[#1b4332] ring-4 ring-[#1b4332]/5' : 'border-slate-100'} flex items-center gap-4`}
+                    onClick={() => setPage('profile', { user: order.user })}
+                    style={getBannerStyle(order.user.bannerId)}
+                    className={`relative p-5 rounded-[2rem] shadow-sm border overflow-hidden ${order.user.name === user.name ? 'border-[#1b4332] ring-4 ring-[#1b4332]/5' : 'border-slate-100'} flex items-center gap-4 cursor-pointer active:scale-95 transition-transform`}
                   >
-                    <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-white ${order.isNpc ? 'bg-slate-300' : 'bg-[#1b4332]'}`}>
-                      <UserIcon size={24} />
-                    </div>
-                    <div className="flex-grow">
-                      <div className="flex justify-between items-start">
-                        <h4 className="font-black text-slate-800 text-sm">{order.user.name} {order.user.name === user.name && '(SAYA)'}</h4>
-                        <span className="text-[10px] font-black text-slate-400">MEJA {order.user.tableNumber}</span>
+                    <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" />
+                    {isUserBirthday(order.user.birthday) && <div className="absolute top-2 right-2 text-2xl animate-bounce">🎉</div>}
+                    <div className="relative z-10 flex items-center gap-4 w-full">
+                      <Avatar user={order.user} size="md" isOnline />
+
+                      <div className="flex-grow text-white">
+                        <div className="flex justify-between items-start">
+                          <h4 className="font-black text-sm drop-shadow-md">{order.user.name} {order.user.name === user.name && '(SAYA)'}</h4>
+                          <span className="text-[10px] font-black opacity-70 drop-shadow-md">MEJA {order.tableNumber}</span>
+                        </div>
+                        <div className="flex items-center gap-2 mt-2">
+                          <span className={`px-2 py-1 rounded-lg text-[9px] font-black uppercase drop-shadow-sm ${order.status === 'WAITING' ? 'bg-amber-400 text-amber-900' : 'bg-green-400 text-green-900'}`}>
+                              {order.status}
+                          </span>
+                          {order.countdown !== undefined && (
+                            <div className="flex items-center gap-1 text-white/80 drop-shadow-md">
+                                <Timer size={10} />
+                                <span className="text-[10px] font-bold">~{order.countdown} mnt</span>
+                            </div>
+                          )}
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2 mt-2">
-                         <span className={`px-2 py-1 rounded-lg text-[9px] font-black uppercase ${order.status === 'WAITING' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'}`}>
-                            {order.status === 'WAITING' ? 'ANTRE' : 'DIMASAK'}
-                         </span>
-                         {order.countdown !== undefined && (
-                           <div className="flex items-center gap-1 text-slate-400">
-                              <Timer size={10} />
-                              <span className="text-[10px] font-bold">~{order.countdown} mnt</span>
-                           </div>
-                         )}
-                      </div>
-                    </div>
-                    <div className="text-right">
-                       <p className="text-[10px] font-black text-slate-400 uppercase">Status</p>
-                       {order.status === 'WAITING' ? <Clock className="text-amber-500 ml-auto mt-1" size={18} /> : <ChefHat className="text-blue-500 ml-auto mt-1" size={18} />}
                     </div>
                   </MotionDiv>
                 ))}

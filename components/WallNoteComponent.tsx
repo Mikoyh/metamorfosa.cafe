@@ -53,7 +53,7 @@ const WallNoteComponent: React.FC<WallNoteComponentProps> = ({ note, isReply = f
                 opacity: isBlurred ? 0.3 : 1,
                 filter: isBlurred ? 'blur(4px)' : 'blur(0px)',
                 rotate: isFocused ? 0 : (note.timestamp % 6) - 3,
-                zIndex: isFocused ? 1100 : isPinned ? 300 : isReply ? 2 : 1,
+                zIndex: isFocused ? 1100 : isPinned ? 300 : note.zIndex,
             }}
             transition={{ type: 'spring', stiffness: 500, damping: 30 }}
             exit={{ scale: 0.5, opacity: 0 }}
@@ -88,4 +88,5 @@ const WallNoteComponent: React.FC<WallNoteComponentProps> = ({ note, isReply = f
     );
 };
 
-export default WallNoteComponent;
+// Memoize the component for performance optimization
+export default React.memo(WallNoteComponent);

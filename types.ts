@@ -21,8 +21,8 @@ export interface Voucher {
 }
 
 export interface User {
-  name: string;
-  tableNumber: string;
+  name: string; // This now acts as the username/display name
+  email: string;
   xp: number;
   gold: number;
   level: number;
@@ -31,11 +31,19 @@ export interface User {
   favorites: string[]; // Array of product IDs
   rank?: number;
   isVerified?: boolean;
+  // Social Profile Features
+  bio?: string;
+  pronouns?: string;
+  birthday?: string; // YYYY-MM-DD
+  avatarId?: string; // e.g., 'emoji-1', 'logo-5'
+  bannerId?: string; // e.g., 'color-#ff0000', 'pattern-3'
+  frameId?: string; // e.g., 'level-5-unlocked'
 }
 
 export interface ActiveOrder {
   orderId: string;
   user: User;
+  tableNumber: string; // Moved from User to ActiveOrder
   items: CartItem[];
   status: 'COOKING' | 'WAITING' | 'READY';
   notes?: string;
@@ -63,6 +71,7 @@ export interface WallNote {
   pinnedUntil?: number; 
   authorRank?: number;
   isVerified?: boolean;
+  zIndex?: number;
 }
 
 export interface BlockedUser {
@@ -73,11 +82,11 @@ export interface BlockedUser {
 
 export type QueueStatus = 'IDLE' | 'WAITING' | 'COOKING' | 'READY' | 'DELIVERED';
 
-export type Page = 'home' | 'menu' | 'leaderboard' | 'shop' | 'wall' | 'profile' | 'staff' | 'voucher-promo' | 'queue-history';
+export type Page = 'home' | 'menu' | 'leaderboard' | 'shop' | 'wall' | 'profile' | 'staff' | 'voucher-promo' | 'queue-history' | 'edit-profile';
 
 export interface AppNotification {
   id: string;
-  type: 'QUEUE' | 'WALL_REPLY' | 'SYSTEM';
+  type: 'QUEUE' | 'WALL_REPLY' | 'SYSTEM' | 'BIRTHDAY';
   title: string;
   message: string;
   read: boolean;

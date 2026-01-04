@@ -1,21 +1,30 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { LogOut, Trophy, Zap, Heart, Clock, ChevronRight, User as UserIcon, LogIn, Star } from 'lucide-react';
-import { User, MenuItem } from '../types';
+import { LogOut, Trophy, Zap, Heart, Clock, User as UserIcon, LogIn, Edit, Plus, Ticket } from 'lucide-react';
+import { User, MenuItem, Page } from '../types';
+import { PROFILE_BANNERS, MENU_DATA } from '../constants';
+import Avatar from '../components/Avatar';
 
 const MotionDiv = motion.div as any;
 
 interface ProfilePageProps {
-  user: User;
+  profileUser: User;
+  currentUser: User;
   onLogout: () => void;
   history: MenuItem[];
   onLoginClick: () => void;
   isLoggedIn: boolean;
+  setPage: (page: Page, data?: any) => void;
+  onAddToCart: (item: MenuItem) => void;
+  onProductClick: (item: MenuItem) => void;
 }
 
-const ProfilePage: React.FC<ProfilePageProps> = ({ user, onLogout, history, onLoginClick, isLoggedIn }) => {
-  if (!isLoggedIn) {
+const ProfilePage: React.FC<ProfilePageProps> = ({ profileUser, currentUser, onLogout, history, onLoginClick, isLoggedIn, setPage, onAddToCart, onProductClick }) => {
+
+  const isOwnProfile = isLoggedIn && profileUser.name === currentUser.name;
+
+  if (!isLoggedIn && !profileUser.name) {
     return (
       <div className="pt-24 p-6 min-h-screen flex flex-col items-center justify-center text-center">
         <div className="w-24 h-24 bg-slate-100 rounded-[2.5rem] flex items-center justify-center text-slate-300 mb-6">
@@ -33,72 +42,124 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ user, onLogout, history, onLo
     );
   }
 
-  return (
-    <div className="pt-24 p-6 pb-32 min-h-screen bg-slate-50">
-      <header className="flex items-center gap-6 mb-8">
-        <div className="relative">
-          <div className="w-24 h-24 bg-[#1b4332] rounded-[2.5rem] flex items-center justify-center text-4xl text-white font-black shadow-2xl shadow-green-900/40">
-            {user.name[0]}
-          </div>
-          {user.isVerified && (
-            <div className="absolute -bottom-2 -right-2 bg-blue-500 text-white p-2 rounded-full ring-4 ring-white shadow-lg">
-                <Star size={16} fill="currentColor" />
-            </div>
-          )}
-        </div>
-        <div>
-          <h2 className="text-3xl font-black text-slate-800 tracking-tighter">{user.name}</h2>
-          <div className="flex items-center gap-2 mt-1">
-             <span className="text-[10px] font-black bg-amber-400 text-amber-900 px-3 py-1 rounded-lg uppercase tracking-widest">Level {user.level}</span>
-             <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">#{user.role}</span>
-          </div>
-        </div>
-      </header>
+  const getBannerStyle = (bannerId?: string) => {
+    if (!bannerId) return { backgroundColor: '#f1f5f9' };
+    const banner = PROFILE_BANNERS.find(b => b.id === bannerId);
+    if (!banner) return { backgroundColor: '#f1f5f9' };
+    if (banner.type === 'pattern') return banner.value;
+    return {};
+  };
 
-      <div className="grid grid-cols-2 gap-4 mb-8">
+  const favoriteItems = MENU_DATA.filter(item => profileUser.favorites.includes(item.id));
+
+  return (
+    <div className="pb-32 min-h-screen bg-slate-50">
+      {/* Banner and Header */}
+      <div style={getBannerStyle(profileUser.bannerId)} className="h-40 pt-20 relative">
+        <div className="absolute inset-0 bg-black/10"></div>
+        <div className="absolute -bottom-12 left-6">
+            <Avatar user={profileUser} size="lg" isOnline={true} />
+        </div>
+      </div>
+      
+      {/* User Info */}
+      <div className="p-6 pt-16">
+        <div className="flex justify-between items-start">
+            <div className="flex-grow">
+              <div className="flex items-center gap-3">
+                <h2 className="text-3xl font-black text-slate-800 tracking-tighter">{profileUser.name}</h2>
+                {profileUser.pronouns && <p className="text-xs text-slate-400 font-bold bg-slate-100 px-2 py-1 rounded-md">{profileUser.pronouns}</p>}
+              </div>
+              {profileUser.bio && <p className="text-sm text-slate-600 mt-2 max-w-xs">{profileUser.bio}</p>}
+              <div className="flex items-center gap-2 mt-3">
+                 <span className="text-[10px] font-black bg-amber-400 text-amber-900 px-3 py-1 rounded-lg uppercase tracking-widest">Level {profileUser.level}</span>
+                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">#{profileUser.role}</span>
+              </div>
+            </div>
+            {isOwnProfile && (
+              <button onClick={() => setPage('edit-profile')} className="flex-shrink-0 flex items-center gap-2 bg-white text-slate-700 px-4 py-2.5 rounded-xl text-xs font-black shadow-sm border border-slate-100 active:scale-95 transition-transform">
+                <Edit size={14} /> EDIT PROFIL
+              </button>
+            )}
+        </div>
+      </div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-2 gap-4 px-6 mb-8">
         <div className="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm">
           <div className="flex items-center gap-2 text-amber-500 mb-2">
              <Trophy size={16} />
              <span className="text-[10px] font-black uppercase tracking-widest">Gold</span>
           </div>
-          <p className="text-3xl font-black text-slate-800">{user.gold.toLocaleString()}</p>
+          <p className="text-3xl font-black text-slate-800">{profileUser.gold.toLocaleString()}</p>
         </div>
         <div className="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm">
           <div className="flex items-center gap-2 text-[#1b4332] mb-2">
              <Zap size={16} />
              <span className="text-[10px] font-black uppercase tracking-widest">Exp</span>
           </div>
-          <p className="text-3xl font-black text-slate-800">{user.xp.toLocaleString()}</p>
+          <p className="text-3xl font-black text-slate-800">{profileUser.xp.toLocaleString()}</p>
         </div>
       </div>
-
-      <div className="space-y-6">
+      
+      {/* Content Sections */}
+      <div className="space-y-8 px-6">
+        {isOwnProfile && profileUser.vouchers.length > 0 && (
+             <section>
+                <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Voucher Saya</h3>
+                {/* Voucher display logic here */}
+             </section>
+        )}
+        
         <section>
-          <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-4 px-2">Koleksi Saya</h3>
-          <div className="bg-white rounded-[2.5rem] border border-slate-100 overflow-hidden shadow-sm">
-             <button className="w-full flex items-center justify-between p-5 border-b border-slate-50 hover:bg-slate-50 active:bg-slate-100 transition-all">
-                <div className="flex items-center gap-4">
-                   <div className="p-3 bg-red-50 text-red-500 rounded-2xl"><Heart size={20} fill="currentColor" /></div>
-                   <span className="font-black text-sm text-slate-700">Produk Favorit ({user.favorites.length})</span>
-                </div>
-                <ChevronRight size={18} className="text-slate-300" />
-             </button>
-             <button className="w-full flex items-center justify-between p-5 hover:bg-slate-50 active:bg-slate-100 transition-all">
-                <div className="flex items-center gap-4">
-                   <div className="p-3 bg-blue-50 text-blue-500 rounded-2xl"><Clock size={20} /></div>
-                   <span className="font-black text-sm text-slate-700">Riwayat Pesanan ({history.length})</span>
-                </div>
-                <ChevronRight size={18} className="text-slate-300" />
-             </button>
-          </div>
+          <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Favorit</h3>
+          {favoriteItems.length > 0 ? (
+             <div className="grid grid-cols-2 gap-4">
+               {favoriteItems.map(item => (
+                 <div key={item.id} className="bg-white rounded-2xl overflow-hidden shadow-sm border border-slate-100 flex flex-col" onClick={() => onProductClick(item)}>
+                   <img src={item.image} className="h-24 object-cover w-full" />
+                   <div className="p-3 flex flex-col flex-grow justify-between">
+                     <p className="text-[10px] font-bold text-slate-800 line-clamp-1">{item.name}</p>
+                     <button onClick={(e) => { e.stopPropagation(); onAddToCart(item); }} className="mt-2 w-full bg-[#1b4332] text-white p-2 rounded-lg flex items-center justify-center text-[10px] font-black active:scale-95 transition-all"><Plus size={12}/> Tambah</button>
+                   </div>
+                 </div>
+               ))}
+             </div>
+          ) : (
+            <div className="text-center py-10 bg-white rounded-2xl border-dashed border-slate-200">
+                <p className="text-sm font-bold text-slate-400">Belum ada favorit.</p>
+                <p className="text-xs text-slate-400 mt-1">Tekan ikon hati pada menu!</p>
+            </div>
+          )}
+        </section>
+        
+        <section>
+          <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Riwayat Pesanan</h3>
+          {history.length > 0 ? (
+             <div className="flex gap-4 overflow-x-auto no-scrollbar -mx-6 px-6">
+                {history.map((item, i) => (
+                    <div key={`hist-${i}`} className="shrink-0 w-32 bg-white rounded-[1.5rem] p-3 border border-slate-100 shadow-sm" onClick={() => onProductClick(item)}>
+                        <img src={item.image} className="w-full h-20 object-cover rounded-2xl mb-2" />
+                        <p className="text-[10px] font-bold text-slate-800 truncate">{item.name}</p>
+                        <button onClick={(e) => { e.stopPropagation(); onAddToCart(item); }} className="mt-2 w-full bg-[#1b4332] text-white py-1.5 rounded-xl text-[8px] font-black active:scale-95 transition-all">RE-ORDER</button>
+                    </div>
+                ))}
+            </div>
+          ) : (
+             <div className="text-center py-10 bg-white rounded-2xl border-dashed border-slate-200">
+                <p className="text-sm font-bold text-slate-400">Belum ada riwayat pesanan.</p>
+             </div>
+          )}
         </section>
 
-        <section>
-          <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-4 px-2">Keamanan & Akun</h3>
-          <button onClick={onLogout} className="w-full py-5 bg-red-50 text-red-600 rounded-[2rem] font-black text-sm flex items-center justify-center gap-3 active:scale-95 transition-all">
-            <LogOut size={20} /> KELUAR DARI CAFE
-          </button>
-        </section>
+        {isOwnProfile && (
+            <section>
+              <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Keamanan & Akun</h3>
+              <button onClick={onLogout} className="w-full py-5 bg-red-50 text-red-600 rounded-[2rem] font-black text-sm flex items-center justify-center gap-3 active:scale-95 transition-all">
+                <LogOut size={20} /> KELUAR DARI CAFE
+              </button>
+            </section>
+        )}
       </div>
     </div>
   );

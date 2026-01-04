@@ -1,16 +1,14 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, MessageSquare, Pin, PinOff, X, Trash2, UserX, Shield, ShieldOff } from 'lucide-react';
-import { WallNote, User, AppNotification, BlockedUser } from '../types';
-import { PASTEL_COLORS, NPC_NOTE_SAMPLES, REACTION_EMOJIS } from '../constants';
+import { Plus, MessageSquare, Pin, PinOff, X, Trash2, UserX, Shield, ShieldOff, User as UserIcon } from 'lucide-react';
+import { WallNote, User, BlockedUser, Page } from '../types';
+import { PASTEL_COLORS, REACTION_EMOJIS } from '../constants';
 import WallNoteComponent from '../components/WallNoteComponent';
 
 const MotionDiv = motion.div as any;
 const USER_NOTE_LIMIT = 15;
 const WALL_HEIGHT = 1600;
-const NOTE_WIDTH = 144; // w-36
-const NOTE_HEIGHT = 144; // min-h-36
 
 interface ConfirmationModalProps {
     isOpen: boolean;
@@ -40,19 +38,22 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({ isOpen, onClose, 
     </AnimatePresence>
 );
 
-
 interface WallPageProps {
   user: User;
-  addNotification: (notif: Omit<AppNotification, 'id' | 'read' | 'timestamp'>) => void;
   onLoginClick: () => void;
   isHeaderVisible: boolean;
   isStaffMode: boolean;
-  // FIX: Add the addXP prop to align with its usage in App.tsx, allowing the component to grant experience points.
-  addXP: () => void;
+  setPage: (page: Page, data?: any) => void;
+  leaderboardData: User[];
+  wallNotes: WallNote[];
+  onAddNote: (noteData: Pick<WallNote, 'text' | 'author' | 'color' | 'replyTo' | 'isNpc'>) => void;
+  onUpdateNote: (noteId: string, updateFn: (note: WallNote) => WallNote) => void;
+  onDeleteNote: (noteId: string) => void;
 }
 
-const WallPage: React.FC<WallPageProps> = ({ user, addNotification, onLoginClick, isHeaderVisible, isStaffMode, addXP }) => {
-    const [notes, setNotes] = useState<WallNote[]>([]);
+type PressEvent = React.MouseEvent<Element, MouseEvent> | React.TouchEvent<Element>;
+
+const WallPage: React.FC<WallPageProps> = ({ user, onLoginClick, isHeaderVisible, isStaffMode, setPage, leaderboardData, wallNotes, onAddNote, onUpdateNote, onDeleteNote }) => {
     const [inputText, setInputText] = useState('');
     const [selectedColor, setSelectedColor] = useState(PASTEL_COLORS[0]);
     const [contextMenu, setContextMenu] = useState<{ noteId: string; x: number; y: number } | null>(null);
@@ -63,13 +64,9 @@ const WallPage: React.FC<WallPageProps> = ({ user, addNotification, onLoginClick
     const [noteToDelete, setNoteToDelete] = useState<WallNote | null>(null);
     const [userToBlock, setUserToBlock] = useState<{name: string} | null>(null);
     const [blockReason, setBlockReason] = useState('');
-    const wallRef = useRef<HTMLDivElement>(null);
-
-    const prevNotesCount = useRef(0);
     
     const isCurrentUserBlocked = useMemo(() => blockedUsers.some(bu => bu.name === user.name), [blockedUsers, user.name]);
 
-    // Local Body Scroll Lock for WallPage modals
     useEffect(() => {
         const isAnyModalOpen = !!noteToDelete || !!userToBlock || isBlockedUsersModalOpen || !!focusedNoteId;
 
@@ -89,117 +86,56 @@ const WallPage: React.FC<WallPageProps> = ({ user, addNotification, onLoginClick
     }, [noteToDelete, userToBlock, isBlockedUsersModalOpen, focusedNoteId]);
 
     useEffect(() => {
-        if ('Notification' in window && Notification.permission !== 'granted') {
-            Notification.requestPermission();
-        }
-        const saved = localStorage.getItem('wall_notes_v2');
-        if (saved) setNotes(JSON.parse(saved));
-        else {
-            const wallWidth = window.innerWidth > 448 ? 448 : window.innerWidth;
-            const seedNotes: WallNote[] = NPC_NOTE_SAMPLES.map((sample, index) => ({
-                 id: `npc-${index}`, text: sample.text, author: sample.author, color: PASTEL_COLORS[index % PASTEL_COLORS.length],
-                 x: Math.random() * (wallWidth - NOTE_WIDTH - 40) + 20,
-                 y: (Math.random() * (WALL_HEIGHT - 300)) + 180,
-                 timestamp: Date.now() - Math.random() * 86400000, isNpc: true, reactions: {},
-            }));
-            setNotes(seedNotes);
-        }
-        
         const savedBlocked = localStorage.getItem('wall_blocked_users_v2');
         if (savedBlocked) setBlockedUsers(JSON.parse(savedBlocked));
-
-        prevNotesCount.current = notes.length;
     }, []);
-
-    useEffect(() => {
-        if (notes.length > prevNotesCount.current) {
-            const newNote = notes[notes.length - 1];
-            if (!newNote.isNpc && newNote.author === user.name) {
-                setTimeout(() => { document.getElementById(newNote.id)?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 150);
-            }
-        }
-        prevNotesCount.current = notes.length;
-    }, [notes, user.name]);
-
-    const saveNotes = (newNotes: WallNote[]) => {
-        setNotes(newNotes);
-        localStorage.setItem('wall_notes_v2', JSON.stringify(newNotes));
-    };
     
     const saveBlockedUsers = (newBlocked: BlockedUser[]) => {
         setBlockedUsers(newBlocked);
         localStorage.setItem('wall_blocked_users_v2', JSON.stringify(newBlocked));
     };
     
-    const findEmptySpot = () => {
-        const wallWidth = wallRef.current ? wallRef.current.clientWidth : (window.innerWidth > 448 ? 448 : window.innerWidth);
-        const PADDING = 8;
-    
-        const NUM_ZONES_Y = 10; const NUM_ZONES_X = 2;
-        const ZONE_HEIGHT = WALL_HEIGHT / NUM_ZONES_Y; const ZONE_WIDTH = wallWidth / NUM_ZONES_X;
-        
-        const zoneCounts = Array(NUM_ZONES_Y * NUM_ZONES_X).fill(0);
-        notes.forEach(note => {
-            const zoneX = Math.min(NUM_ZONES_X - 1, Math.floor(note.x / ZONE_WIDTH));
-            const zoneY = Math.min(NUM_ZONES_Y - 1, Math.floor(note.y / ZONE_HEIGHT));
-            zoneCounts[zoneY * NUM_ZONES_X + zoneX]++;
-        });
-        
-        const minCount = Math.min(...zoneCounts);
-        const emptiestZoneIndices = zoneCounts.map((count, index) => count === minCount ? index : -1).filter(index => index !== -1);
-        const chosenZoneIndex = emptiestZoneIndices[Math.floor(Math.random() * emptiestZoneIndices.length)];
-        
-        const zoneY = Math.floor(chosenZoneIndex / NUM_ZONES_X); const zoneX = chosenZoneIndex % NUM_ZONES_X;
-        
-        const rawX = (zoneX * ZONE_WIDTH) + (Math.random() * (ZONE_WIDTH - NOTE_WIDTH));
-        const rawY = (zoneY * ZONE_HEIGHT) + (Math.random() * (ZONE_HEIGHT - NOTE_HEIGHT));
-    
-        const x = Math.max(PADDING, Math.min(rawX, wallWidth - NOTE_WIDTH - PADDING));
-        const y = Math.max(160, Math.min(rawY, WALL_HEIGHT - NOTE_HEIGHT - PADDING));
-    
-        return { x, y };
-    };
-
     const addNote = () => {
         if (isCurrentUserBlocked) return;
         if (!user.name) { onLoginClick(); return; }
-        const userNotesCount = notes.filter(n => !n.isNpc && n.author === user.name).length;
+        const userNotesCount = wallNotes.filter(n => !n.isNpc && n.author === user.name).length;
         if (userNotesCount >= USER_NOTE_LIMIT) { alert(`Anda telah mencapai batas ${USER_NOTE_LIMIT} catatan.`); return; }
         if (!inputText.trim()) return;
         
-        const {x, y} = findEmptySpot();
-        const newNote: WallNote = { id: new Date().toISOString(), text: inputText, color: selectedColor, x, y, author: user.name, timestamp: Date.now(), replyTo: replyingTo?.id };
-
-        if (replyingTo && replyingTo.author !== user.name) {
-            addNotification({ type: 'WALL_REPLY', title: `Balasan Baru dari ${user.name}`, message: `"${inputText}"` });
-        }
+        onAddNote({
+            text: inputText,
+            author: user.name,
+            color: selectedColor,
+            replyTo: replyingTo?.id,
+            isNpc: false,
+        });
         
-        saveNotes([...notes, newNote]);
-        // FIX: Award experience points when a user successfully posts a new note.
-        addXP();
         setInputText('');
         setReplyingTo(null);
     };
 
     const handleReaction = (noteId: string, emoji: string) => {
-        const newNotes = notes.map(n => {
-            if (n.id === noteId) {
-                const reactions = { ...(n.reactions || {}) }; const reactedUsers = reactions[emoji] || []; const userName = user.name;
-                if (reactedUsers.includes(userName)) reactions[emoji] = reactedUsers.filter(u => u !== userName);
-                else reactions[emoji] = [...reactedUsers, userName];
-                return { ...n, reactions };
+        if (!user.name) { onLoginClick(); return; }
+        onUpdateNote(noteId, (note) => {
+            const reactions = { ...(note.reactions || {}) }; 
+            const reactedUsers = reactions[emoji] || []; 
+            const userName = user.name;
+            if (reactedUsers.includes(userName)) {
+                reactions[emoji] = reactedUsers.filter(u => u !== userName);
+            } else {
+                reactions[emoji] = [...reactedUsers, userName];
             }
-            return n;
+            return { ...note, reactions };
         });
-        saveNotes(newNotes);
+        handleWallClick();
     };
     
-    const handlePin = (noteId: string) => { saveNotes(notes.map(n => ({ ...n, pinnedUntil: n.id === noteId ? (Date.now() + 7 * 24 * 60 * 60 * 1000) : n.pinnedUntil }))); };
-    const handleUnpin = (noteId: string) => { saveNotes(notes.map(n => n.id === noteId ? { ...n, pinnedUntil: undefined } : n)); };
+    const handlePin = (noteId: string) => { onUpdateNote(noteId, n => ({...n, pinnedUntil: Date.now() + 7*24*60*60*1000 })); handleWallClick(); };
+    const handleUnpin = (noteId: string) => { onUpdateNote(noteId, n => ({...n, pinnedUntil: undefined })); handleWallClick();};
     
     const confirmDeleteNote = () => {
         if (!noteToDelete) return;
-        saveNotes(notes.filter(n => n.id !== noteToDelete.id));
+        onDeleteNote(noteToDelete.id);
         setNoteToDelete(null);
         handleWallClick();
     }
@@ -207,11 +143,9 @@ const WallPage: React.FC<WallPageProps> = ({ user, addNotification, onLoginClick
     const confirmBlockUser = () => {
         if (!userToBlock || !blockReason.trim()) { alert("Alasan wajib diisi."); return; }
         saveBlockedUsers([...blockedUsers, { name: userToBlock.name, reason: blockReason.trim(), timestamp: Date.now() }]);
-        saveNotes(notes.filter(n => n.author !== userToBlock.name));
         alert(`Pengguna "${userToBlock.name}" telah diblokir.`);
         setUserToBlock(null);
         setBlockReason('');
-        handleWallClick();
     };
 
     const handleUnblockUser = (name: string) => {
@@ -219,28 +153,25 @@ const WallPage: React.FC<WallPageProps> = ({ user, addNotification, onLoginClick
         alert(`Blokir untuk "${name}" telah dibuka.`);
     }
 
-    const handleNoteLongPress = (noteId: string, event: any) => {
+    const handleNoteLongPress = (noteId: string, event: PressEvent) => {
         const target = event.target as HTMLElement;
         const noteElement = target.closest('.note-item');
         if (!noteElement) return;
-    
+
         const rect = noteElement.getBoundingClientRect();
         
-        const CONTEXT_MENU_HEIGHT = isStaffMode ? 220 : 120;
-        const CONTEXT_MENU_WIDTH = 150;
-        const MARGIN = 8;
-    
-        let menuY = rect.bottom + window.scrollY + MARGIN;
-    
-        if (rect.bottom + CONTEXT_MENU_HEIGHT > window.innerHeight) {
-            menuY = rect.top + window.scrollY - CONTEXT_MENU_HEIGHT - MARGIN;
+        // Use fixed positioning relative to the viewport.
+        const menuWidth = 160; // Estimated width of the context menu
+        const viewportWidth = window.innerWidth;
+        let menuX = rect.left;
+        
+        // Prevent menu from going off-screen to the right
+        if (menuX + menuWidth > viewportWidth) {
+            menuX = viewportWidth - menuWidth - 8;
         }
 
-        let menuX = rect.left;
-        if (rect.left + CONTEXT_MENU_WIDTH > window.innerWidth) {
-            menuX = window.innerWidth - CONTEXT_MENU_WIDTH - MARGIN;
-        }
-    
+        const menuY = rect.bottom + 8; // Position 8px below the note
+
         setContextMenu({ noteId, x: menuX, y: menuY });
         setFocusedNoteId(noteId);
     };
@@ -251,18 +182,19 @@ const WallPage: React.FC<WallPageProps> = ({ user, addNotification, onLoginClick
         setFocusedNoteId(null);
     };
 
-    const authorMap = useMemo(() => {
-        const map = new Map<string, string>();
-        notes.forEach(note => map.set(note.id, note.author));
-        return map;
-    }, [notes]);
-
-    const contextNote = contextMenu ? notes.find(n => n.id === contextMenu.noteId) : null;
-    const formattedDate = contextNote ? new Date(contextNote.timestamp).toLocaleString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+    const handleViewProfile = (authorName: string) => {
+        const profileUser = leaderboardData.find(u => u.name === authorName);
+        if(profileUser) {
+            setPage('profile', { user: profileUser });
+        }
+    };
+    
+    const contextNote = contextMenu ? wallNotes.find(n => n.id === contextMenu.noteId) : null;
+    const formattedDate = contextNote ? new Date(contextNote.timestamp).toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
     const isNotePinned = contextNote?.pinnedUntil && contextNote.pinnedUntil > Date.now();
 
     return (
-        <div className="relative min-h-screen bg-slate-50 overflow-hidden" onClick={handleWallClick}>
+        <div className="relative bg-slate-50 pt-16 pb-32" onClick={handleWallClick}>
              <MotionDiv 
                 initial={{ y: 0 }} 
                 animate={{ y: isHeaderVisible ? 0 : '-100%', filter: focusedNoteId ? 'blur(4px)' : 'blur(0px)' }} 
@@ -298,9 +230,9 @@ const WallPage: React.FC<WallPageProps> = ({ user, addNotification, onLoginClick
                 {focusedNoteId && ( <MotionDiv onClick={handleWallClick} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/20 backdrop-blur-sm z-[1000]" /> )}
             </AnimatePresence>
 
-            <div ref={wallRef} className="relative w-full bg-amber-50" style={{ paddingTop: '152px', height: `${WALL_HEIGHT + 152}px`, backgroundImage: `radial-gradient(#00000011 1px, transparent 1px)`, backgroundSize: `20px 20px` }}>
-              <AnimatePresence>
-                {notes.map(note => (
+            <div className="relative w-full max-w-md mx-auto bg-amber-50" style={{ height: `${WALL_HEIGHT}px`, backgroundImage: `radial-gradient(#00000011 1px, transparent 1px)`, backgroundSize: `20px 20px` }}>
+                <AnimatePresence>
+                {wallNotes.map(note => (
                     <WallNoteComponent 
                         key={note.id}
                         note={note}
@@ -308,26 +240,26 @@ const WallPage: React.FC<WallPageProps> = ({ user, addNotification, onLoginClick
                         isBlurred={focusedNoteId !== null && focusedNoteId !== note.id} 
                         onLongPress={handleNoteLongPress} 
                         onClick={handleWallClick}
-                        isReply={!!note.replyTo}
-                        parentAuthor={note.replyTo ? authorMap.get(note.replyTo) : undefined}
                     />
                 ))}
-              </AnimatePresence>
+                </AnimatePresence>
             </div>
             
             <AnimatePresence>
             {contextMenu && contextNote && (
                 <MotionDiv 
                     initial={{opacity:0, scale:0.9}} animate={{opacity:1, scale:1}} exit={{opacity:0, scale:0.9}}
-                    style={{ top: contextMenu.y, left: contextMenu.x }}
+                    style={{ top: `${contextMenu.y}px`, left: `${contextMenu.x}px` }}
                     onClick={(e) => e.stopPropagation()}
-                    className="absolute z-[1101] bg-white rounded-xl shadow-2xl p-1 flex flex-col items-start w-auto"
+                    className="fixed z-[1101] bg-white rounded-xl shadow-2xl p-1 flex flex-col items-start w-auto"
                 >
                     <div className="flex flex-wrap gap-1 p-1">
                         {REACTION_EMOJIS.map(emoji => ( <button key={emoji} onClick={() => handleReaction(contextNote.id, emoji)} className="w-8 h-8 rounded-full hover:bg-slate-100 text-lg flex items-center justify-center">{emoji}</button> ))}
                     </div>
+                     <button onClick={() => handleViewProfile(contextNote.author)} className="w-full text-left flex items-center gap-2 text-sm p-2 rounded-md hover:bg-slate-100"><UserIcon size={14}/> Lihat Profil</button>
                     <button onClick={() => { setReplyingTo(contextNote); handleWallClick(new MouseEvent('click') as any); }} className="w-full text-left flex items-center gap-2 text-sm p-2 rounded-md hover:bg-slate-100"><MessageSquare size={14}/> Balas</button>
                     {isStaffMode && (<>
+                        <div className="w-full h-px bg-slate-100 my-1" />
                         {isNotePinned
                         ? <button onClick={() => handleUnpin(contextNote.id)} className="w-full text-left flex items-center gap-2 text-sm p-2 rounded-md hover:bg-slate-100 text-amber-600"><PinOff size={14}/> Lepas Pin</button>
                         : <button onClick={() => handlePin(contextNote.id)} className="w-full text-left flex items-center gap-2 text-sm p-2 rounded-md hover:bg-slate-100"><Pin size={14}/> Sematkan (7 Hari)</button>

@@ -1,10 +1,11 @@
 
 import React, { useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { User as UserIcon, Trophy, Star, MapPin, Phone, Instagram, Ticket, ChevronRight, Bell, Clock, ChefHat, Truck, ShoppingBasket, ShoppingBag, Heart, ExternalLink, Zap, Search } from 'lucide-react';
-import { User, Page, QueueStatus, ActiveOrder, MenuItem, WallNote } from '../types';
-import { XP_FOR_LEVEL, VOUCHER_DATA, FACILITIES_DATA, MENU_DATA, LOGO } from '../constants';
+import { User as UserIcon, Trophy, Star, Phone, Instagram, Clock, Truck, ShoppingBasket, ShoppingBag, Heart, Zap, Search } from 'lucide-react';
+import { User, Page, ActiveOrder, MenuItem, WallNote } from '../types';
+import { XP_FOR_LEVEL, FACILITIES_DATA, MENU_DATA, LOGO, PROFILE_BANNERS } from '../constants';
 import WallTicker from '../components/WallTicker';
+import Avatar from '../components/Avatar';
 
 const MotionDiv = motion.div as any;
 
@@ -20,6 +21,7 @@ interface HomePageProps {
   onAddToCart: (item: MenuItem) => void;
   onProductClick: (item: MenuItem) => void;
   wallNotes: WallNote[];
+  isBirthday: boolean;
 }
 
 const checkStoreStatus = () => {
@@ -32,21 +34,34 @@ const checkStoreStatus = () => {
     };
 };
 
-const HomePage: React.FC<HomePageProps> = ({ setPage, user, isLoggedIn, onLoginClick, userOrder, allActiveOrders, leaderboard, userHistory, onAddToCart, onProductClick, wallNotes }) => {
+const HomePage: React.FC<HomePageProps> = ({ setPage, user, isLoggedIn, onLoginClick, userOrder, allActiveOrders, leaderboard, userHistory, onAddToCart, onProductClick, wallNotes, isBirthday }) => {
   const storeStatus = useMemo(() => checkStoreStatus(), []);
   const xpProgress = user.level < XP_FOR_LEVEL.length ? (user.xp / XP_FOR_LEVEL[user.level]) * 100 : 100;
+
+  const getBannerStyle = (bannerId?: string) => {
+    if (!bannerId) return {};
+    const banner = PROFILE_BANNERS.find(b => b.id === bannerId);
+    if (!banner) return {};
+    if (banner.type === 'color') return { backgroundColor: banner.value };
+    if (banner.type === 'pattern') return banner.value;
+    return {};
+  };
+
+  const isUserBirthday = (birthday?: string) => {
+    if (!birthday) return false;
+    const today = new Date();
+    const [year, month, day] = birthday.split('-').map(Number);
+    return today.getMonth() === month - 1 && today.getDate() === day;
+  };
 
   return (
     <div className="pb-36 pt-20 px-4 space-y-6 bg-slate-50/50">
       
-      {/* Grouping div to bypass parent's space-y-* issue and control spacing */}
       <div>
-        {/* 0. Wall of Thoughts Ticker - With margin-bottom */}
         <div className="mt-2 mb-2">
           <WallTicker notes={wallNotes} onClick={() => setPage('wall')} />
         </div>
 
-        {/* 1. Meta Hub Luxury Header - No more negative margin */}
         <section className="bg-white rounded-[2rem] p-6 shadow-xl shadow-green-900/5 border border-slate-100 relative overflow-hidden flex flex-col gap-4">
           <div className="absolute top-0 right-0 w-48 h-48 bg-green-50 rounded-full -mr-20 -mt-20 opacity-40 blur-3xl" />
           
@@ -54,7 +69,7 @@ const HomePage: React.FC<HomePageProps> = ({ setPage, user, isLoggedIn, onLoginC
             <div>
               <p className="text-[10px] font-black text-[#1b4332]/40 uppercase tracking-[0.3em] mb-1">Metamorfosa Hub</p>
               <h2 className="text-2xl font-black text-[#1b4332] tracking-tighter leading-none mb-3">
-                  Hello, {isLoggedIn ? user.name : 'Meta Guest'}!
+                  {isBirthday ? `🎉 HBD, ${user.name}!` : `Hello, ${isLoggedIn ? user.name : 'Meta Guest'}!`}
               </h2>
               <div className="flex flex-wrap gap-2">
                   <div className={`flex items-center gap-1.5 text-[9px] font-black px-2.5 py-1 rounded-lg ${storeStatus.cafeOpen ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-red-100 text-red-700 border border-red-200'}`}>
@@ -68,9 +83,9 @@ const HomePage: React.FC<HomePageProps> = ({ setPage, user, isLoggedIn, onLoginC
               </div>
             </div>
             {isLoggedIn ? (
-              <div onClick={() => setPage('profile')} className="w-12 h-12 bg-[#1b4332] text-white rounded-2xl flex items-center justify-center font-black text-lg shadow-xl shadow-green-900/30 active:scale-95 transition-all">
-                 {user.name[0]}
-              </div>
+              <button onClick={() => setPage('profile')} className="active:scale-95 transition-all">
+                 <Avatar user={user} size="md" isOnline />
+              </button>
             ) : (
               <button onClick={onLoginClick} className="w-12 h-12 bg-white border border-slate-200 rounded-2xl flex items-center justify-center text-[#1b4332] shadow-sm active:scale-95 transition-all">
                 <UserIcon size={20} />
@@ -116,7 +131,6 @@ const HomePage: React.FC<HomePageProps> = ({ setPage, user, isLoggedIn, onLoginC
             </a>
           </div>
           
-          {/* NEW SEARCH TRIGGER BAR --- REPOSITIONED */}
           <div 
             onClick={() => setPage('menu', { activateSearch: true })}
             className="w-full flex items-center justify-between p-3 bg-white rounded-2xl border-2 border-[#1b4332]/20 shadow-sm cursor-pointer active:scale-[0.98] transition-transform"
@@ -130,7 +144,6 @@ const HomePage: React.FC<HomePageProps> = ({ setPage, user, isLoggedIn, onLoginC
         </section>
       </div>
 
-      {/* 2. Facilities */}
       <section className="px-2">
         <div className="grid grid-cols-4 gap-3">
           {FACILITIES_DATA.map(f => (
@@ -142,7 +155,6 @@ const HomePage: React.FC<HomePageProps> = ({ setPage, user, isLoggedIn, onLoginC
         </div>
       </section>
 
-      {/* 3. Live Queue (FIFO Display: Oldest to Newest from Left to Right) */}
       <section>
         <div className="flex justify-between items-center mb-3 px-2">
           <h3 className="text-xs font-black text-[#1b4332]/30 uppercase tracking-[0.2em]">Live Queue</h3>
@@ -153,23 +165,25 @@ const HomePage: React.FC<HomePageProps> = ({ setPage, user, isLoggedIn, onLoginC
              <p className="text-[10px] font-bold text-slate-300 uppercase py-4 px-2">Belum ada antrean...</p>
            ) : (
              allActiveOrders.map((order, i) => (
-               <div key={order.orderId} className={`shrink-0 w-36 p-4 rounded-[1.5rem] bg-white border ${order.user.name === user.name ? 'border-[#1b4332] ring-4 ring-[#1b4332]/5 shadow-lg' : 'border-slate-100 shadow-sm'}`}>
-                 <div className="flex justify-between items-start mb-2">
-                    {/* Index #1 is the oldest (index 0 in array) */}
-                    <span className="text-[10px] font-black text-[#1b4332]">#{i + 1}</span>
-                    <div className={`w-2 h-2 rounded-full ${order.status === 'READY' ? 'bg-blue-500' : 'bg-amber-500'} animate-pulse`} />
+               <div key={order.orderId} onClick={() => setPage('profile', { user: order.user })} style={getBannerStyle(order.user.bannerId)} className={`relative shrink-0 w-36 p-4 rounded-[1.5rem] bg-white border overflow-hidden active:scale-95 transition-transform cursor-pointer ${order.user.name === user.name ? 'ring-4 ring-[#1b4332]/20 shadow-lg' : 'border-slate-100 shadow-sm'}`}>
+                 <div className="absolute inset-0 bg-black/20" />
+                 {isUserBirthday(order.user.birthday) && <div className="absolute top-1.5 right-1.5 text-lg animate-pulse">🎉</div>}
+                 <div className="relative z-10 text-white">
+                    <div className="flex justify-between items-start mb-2">
+                        <span className="text-[10px] font-black bg-black/20 px-1.5 py-0.5 rounded-md drop-shadow-sm">#{i + 1}</span>
+                        <div className={`w-2 h-2 rounded-full ${order.status === 'READY' ? 'bg-blue-300' : 'bg-amber-300'} ring-2 ring-white/50 animate-pulse`} />
+                    </div>
+                    <p className="text-xs font-black drop-shadow-sm truncate mb-1">{order.user.name}</p>
+                    <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-md drop-shadow-sm ${order.status === 'WAITING' ? 'bg-amber-400 text-amber-900' : order.status === 'COOKING' ? 'bg-green-400 text-green-900' : 'bg-blue-400 text-blue-900'}`}>
+                        {order.status}
+                    </span>
                  </div>
-                 <p className="text-xs font-black text-slate-800 truncate mb-1">{order.user.name}</p>
-                 <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-md ${order.status === 'WAITING' ? 'bg-amber-100 text-amber-600' : order.status === 'COOKING' ? 'bg-green-100 text-green-600' : 'bg-blue-100 text-blue-600'}`}>
-                    {order.status}
-                 </span>
                </div>
              ))
            )}
         </div>
       </section>
 
-      {/* 4. Order Status Banner */}
       {userOrder && (
          <section onClick={() => setPage('queue-history')} className="cursor-pointer active:scale-[0.98] transition-all">
             <div className="bg-[#1b4332] p-5 rounded-[2rem] text-white shadow-2xl relative overflow-hidden">
@@ -187,7 +201,6 @@ const HomePage: React.FC<HomePageProps> = ({ setPage, user, isLoggedIn, onLoginC
          </section>
       )}
 
-      {/* 5. Recent Purchases */}
       {isLoggedIn && userHistory.length > 0 && (
          <section>
             <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-4 px-2">Beli Lagi</h3>
@@ -203,7 +216,6 @@ const HomePage: React.FC<HomePageProps> = ({ setPage, user, isLoggedIn, onLoginC
          </section>
       )}
 
-      {/* 6. Favorite Menu */}
       {isLoggedIn && user.favorites.length > 0 && (
           <section>
             <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-4 px-2">Koleksi Favorit</h3>
@@ -221,7 +233,6 @@ const HomePage: React.FC<HomePageProps> = ({ setPage, user, isLoggedIn, onLoginC
           </section>
       )}
 
-      {/* 7. Resto Pick */}
       <section>
         <div className="bg-gradient-to-br from-[#1b4332] to-green-900 rounded-[2rem] p-6 text-white shadow-2xl relative overflow-hidden">
           <Star className="absolute -top-6 -left-6 w-24 h-24 opacity-10" />
@@ -241,7 +252,6 @@ const HomePage: React.FC<HomePageProps> = ({ setPage, user, isLoggedIn, onLoginC
         </div>
       </section>
 
-      {/* 8. Top 5 Leaderboard */}
       <section className="bg-white rounded-[2rem] p-6 shadow-sm border border-slate-100">
         <div className="flex justify-between items-center mb-5">
             <h3 className="font-black text-[#1b4332] text-sm tracking-widest uppercase">Elite Leaderboard</h3>
@@ -257,10 +267,7 @@ const HomePage: React.FC<HomePageProps> = ({ setPage, user, isLoggedIn, onLoginC
                 <div key={u.rank} className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                         <span className={`text-xs font-black w-4 text-center ${u.rank === 1 ? 'text-amber-500' : 'text-slate-300'}`}>#{u.rank}</span>
-                        <div className="relative">
-                            <div className="w-9 h-9 bg-slate-50 rounded-xl flex items-center justify-center font-black text-[#1b4332] border border-slate-100 text-sm">{u.name[0]}</div>
-                            {u.isVerified && <div className="absolute -top-1 -right-1 bg-blue-500 text-white rounded-full p-0.5 ring-2 ring-white shadow-sm"><Star size={8} fill="currentColor"/></div>}
-                        </div>
+                        <Avatar user={u} size="sm" isOnline />
                         <div className="min-w-0">
                             <p className="text-[10px] font-black text-slate-800 truncate flex items-center gap-1">{u.name} {u.rank === 1 && '👑'}</p>
                             <p className="text-[8px] font-bold text-slate-400 uppercase tracking-[0.1em]">{u.xp.toLocaleString()} XP • {u.role}</p>
@@ -272,7 +279,6 @@ const HomePage: React.FC<HomePageProps> = ({ setPage, user, isLoggedIn, onLoginC
         </div>
       </section>
 
-      {/* 9. Google Maps Embed */}
       <section>
         <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-4 px-2">Kunjungi Kafe</h3>
         <div className="w-full h-44 rounded-[1.5rem] overflow-hidden shadow-sm border border-slate-200 grayscale-[0.2]">

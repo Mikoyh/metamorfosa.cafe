@@ -42,7 +42,7 @@ const StaffPage: React.FC<StaffPageProps> = ({ activeOrders, onMarkReady }) => {
             >
               {explodingOrderId === order.orderId && <ConfettiExplosion onComplete={() => setExplodingOrderId(null)} />}
               <div className="flex justify-between items-center mb-3">
-                <h3 className="font-bold text-lg text-slate-900">{order.user.name} - Meja {order.user.tableNumber}</h3>
+                <h3 className="font-bold text-lg text-slate-900">{order.user.name} - Meja {order.tableNumber}</h3>
                 <span className={`px-2 py-1 text-xs font-bold rounded-full ${order.status === 'COOKING' ? 'bg-green-100 text-green-800' : order.status === 'READY' ? 'bg-blue-100 text-blue-800' : 'bg-yellow-100 text-yellow-800'}`}>{order.status}</span>
               </div>
               <div className="space-y-1 text-sm border-t border-slate-100 pt-3 mt-3">

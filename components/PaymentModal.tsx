@@ -1,7 +1,7 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, CheckCircle2, Wallet, Smartphone, Banknote, QrCode } from 'lucide-react';
+import { X, CheckCircle2, Wallet, Smartphone, Banknote, QrCode, Hash } from 'lucide-react';
 import { CartItem } from '../types';
 
 const MotionDiv = motion.div as any;
@@ -10,23 +10,32 @@ interface PaymentModalProps {
   isOpen: boolean;
   onClose: () => void;
   order: { items: CartItem[], notes?: string } | null;
-  onConfirm: () => void;
+  onConfirm: (tableNumber: string) => void;
 }
 
 const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, order, onConfirm }) => {
   const [paymentMethod, setPaymentMethod] = useState('COD');
   const [isConfirming, setIsConfirming] = useState(false);
+  const [tableNumber, setTableNumber] = useState('');
+
+  useEffect(() => {
+    // Reset state when modal opens or order changes
+    if (isOpen) {
+        setIsConfirming(false);
+        setTableNumber('');
+    }
+  }, [isOpen, order]);
 
   const totalPrice = order?.items.reduce((acc, item) => acc + item.price * item.quantity, 0) || 0;
 
   const paymentOptions = [
     { id: 'COD', label: 'Cash on Delivery (Bayar di Kasir)', icon: <Banknote className="text-green-600" />, active: true },
     { id: 'QRIS', label: 'QRIS (Gopay/Dana/LinkAja)', icon: <QrCode className="text-purple-600" />, active: false },
-    { id: 'DANA', label: 'DANA', icon: <Smartphone className="text-blue-500" />, active: false },
-    { id: 'OVO', label: 'OVO', icon: <Wallet className="text-purple-500" />, active: false },
   ];
 
   if (!order) return null;
+  
+  const canConfirm = tableNumber.trim() !== '';
 
   return (
     <AnimatePresence>
@@ -53,6 +62,15 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, order, onC
             </div>
 
             <div className="flex-grow overflow-y-auto p-8 space-y-6 no-scrollbar">
+              {/* Table Number Input */}
+              <div>
+                <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Detail Pengantaran</p>
+                <div className="relative">
+                    <Hash size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <input type="number" value={tableNumber} onChange={(e) => setTableNumber(e.target.value)} className="w-full p-4 pl-12 rounded-xl border-2 border-slate-200 focus:ring-2 focus:ring-[#1b4332] bg-slate-50 font-medium text-center text-lg" placeholder="Nomor Meja Anda" />
+                </div>
+              </div>
+
               {/* Summary */}
               <div>
                 <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Ringkasan Pesanan</p>
@@ -111,16 +129,17 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, order, onC
               {!isConfirming ? (
                 <button 
                   onClick={() => setIsConfirming(true)}
-                  className="w-full py-5 bg-[#1b4332] text-white rounded-2xl font-black text-lg shadow-xl shadow-green-900/20 active:scale-[0.98] transition-all"
+                  disabled={!canConfirm}
+                  className="w-full py-5 bg-[#1b4332] text-white rounded-2xl font-black text-lg shadow-xl shadow-green-900/20 active:scale-[0.98] transition-all disabled:bg-slate-300 disabled:shadow-none"
                 >
-                  KONFIRMASI PESANAN
+                  {canConfirm ? 'KONFIRMASI PESANAN' : 'Isi Nomor Meja Dulu'}
                 </button>
               ) : (
                 <div className="space-y-3">
                   <p className="text-center text-xs font-bold text-red-500 animate-pulse">Pesanan akan langsung diproses dapur. Lanjutkan?</p>
                   <div className="grid grid-cols-2 gap-3">
                     <button onClick={() => setIsConfirming(false)} className="py-4 rounded-xl font-bold bg-white text-slate-500 border border-slate-200">Kembali</button>
-                    <button onClick={onConfirm} className="py-4 rounded-xl font-bold bg-[#1b4332] text-white shadow-lg shadow-green-900/10">Ya, Pesan!</button>
+                    <button onClick={() => onConfirm(tableNumber)} className="py-4 rounded-xl font-bold bg-[#1b4332] text-white shadow-lg shadow-green-900/10">Ya, Pesan!</button>
                   </div>
                 </div>
               )}

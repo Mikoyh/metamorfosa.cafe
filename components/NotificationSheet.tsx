@@ -1,7 +1,8 @@
 
 import React, { useEffect } from 'react';
 import { motion, AnimatePresence, useAnimationControls } from 'framer-motion';
-import { X, Bell, Clock, ChefHat, Truck, MessageSquare } from 'lucide-react';
+// FIX: Add Gift icon to handle 'BIRTHDAY' notification type.
+import { X, Bell, Clock, ChefHat, Truck, MessageSquare, Gift } from 'lucide-react';
 import { QueueStatus, AppNotification } from '../types';
 
 const MotionDiv = motion.div as any;
@@ -25,7 +26,7 @@ const NotificationSheet: React.FC<NotificationSheetProps> = ({ isOpen, onClose, 
         setNotifications(prev => prev.map(n => ({ ...n, read: true })));
       }, 500);
     }
-  }, [isOpen, controls]);
+  }, [isOpen, controls, setNotifications]);
 
   const getQueueNotification = () => {
     if (queueStatus === 'IDLE' || queueStatus === 'DELIVERED') return null;
@@ -45,8 +46,10 @@ const NotificationSheet: React.FC<NotificationSheetProps> = ({ isOpen, onClose, 
   const queueNotification = getQueueNotification();
   const allNotifications = queueNotification ? [queueNotification, ...notifications] : notifications;
 
-  const getIcon = (type: 'QUEUE' | 'WALL_REPLY' | 'SYSTEM') => {
+  // FIX: Update getIcon function to accept 'BIRTHDAY' type and return the appropriate icon.
+  const getIcon = (type: AppNotification['type']) => {
     if (type === 'WALL_REPLY') return <MessageSquare size={20} />;
+    if (type === 'BIRTHDAY') return <Gift size={20} />;
     if (type === 'QUEUE') {
       if (queueStatus === 'WAITING') return <Clock size={20} />;
       if (queueStatus === 'COOKING') return <ChefHat size={20} />;
