@@ -2,8 +2,8 @@
 import React, { useEffect } from 'react';
 import { motion, AnimatePresence, useAnimationControls } from 'framer-motion';
 // FIX: Add Gift icon to handle 'BIRTHDAY' notification type.
-import { X, Bell, Clock, ChefHat, Truck, MessageSquare, Gift } from 'lucide-react';
-import { QueueStatus, AppNotification } from '../types';
+import { X, Bell, Clock, ChefHat, Truck, MessageSquare, Gift, Users } from 'lucide-react';
+import { QueueStatus, AppNotification, JoinRequest } from '../types';
 
 const MotionDiv = motion.div as any;
 
@@ -13,9 +13,10 @@ interface NotificationSheetProps {
   queueStatus: QueueStatus;
   notifications: AppNotification[];
   setNotifications: React.Dispatch<React.SetStateAction<AppNotification[]>>;
+  onRespondToJoinRequest: (request: JoinRequest, accepted: boolean) => void;
 }
 
-const NotificationSheet: React.FC<NotificationSheetProps> = ({ isOpen, onClose, queueStatus, notifications, setNotifications }) => {
+const NotificationSheet: React.FC<NotificationSheetProps> = ({ isOpen, onClose, queueStatus, notifications, setNotifications, onRespondToJoinRequest }) => {
   const controls = useAnimationControls();
 
   useEffect(() => {
@@ -46,16 +47,22 @@ const NotificationSheet: React.FC<NotificationSheetProps> = ({ isOpen, onClose, 
   const queueNotification = getQueueNotification();
   const allNotifications = queueNotification ? [queueNotification, ...notifications] : notifications;
 
-  // FIX: Update getIcon function to accept 'BIRTHDAY' type and return the appropriate icon.
   const getIcon = (type: AppNotification['type']) => {
     if (type === 'WALL_REPLY') return <MessageSquare size={20} />;
     if (type === 'BIRTHDAY') return <Gift size={20} />;
+    if (type === 'PARTY_INVITE') return <Users size={20} />;
     if (type === 'QUEUE') {
       if (queueStatus === 'WAITING') return <Clock size={20} />;
       if (queueStatus === 'COOKING') return <ChefHat size={20} />;
       return <Truck size={20} />;
     }
     return <Bell size={20}/>;
+  };
+  
+  const handleResponse = (notificationId: string, request: JoinRequest, accepted: boolean) => {
+    onRespondToJoinRequest(request, accepted);
+    // Remove the notification after responding
+    setNotifications(prev => prev.filter(n => n.id !== notificationId));
   };
 
   return (
@@ -105,6 +112,12 @@ const NotificationSheet: React.FC<NotificationSheetProps> = ({ isOpen, onClose, 
                       </div>
                     </div>
                     <p className="text-sm text-slate-700 leading-relaxed">{notif.message}</p>
+                    {notif.type === 'PARTY_INVITE' && notif.payload?.request && (
+                      <div className="flex gap-2 mt-3">
+                        <button onClick={() => handleResponse(notif.id, notif.payload.request, true)} className="flex-1 bg-green-100 text-green-700 text-xs font-bold py-2 rounded-lg">Terima</button>
+                        <button onClick={() => handleResponse(notif.id, notif.payload.request, false)} className="flex-1 bg-red-100 text-red-700 text-xs font-bold py-2 rounded-lg">Tolak</button>
+                      </div>
+                    )}
                   </div>
                 ))
               )}

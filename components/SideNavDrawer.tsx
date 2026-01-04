@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Home, ShoppingBag, User as UserIcon, Trophy, Lock, LogOut, Ticket, Clock, ChefHat } from 'lucide-react';
+import { Home, ShoppingBag, User as UserIcon, Trophy, Lock, LogOut, Ticket, Clock, ChefHat, Users } from 'lucide-react';
 import { User, Page } from '../types';
 
 const MotionDiv = motion.div as any;
@@ -22,6 +22,7 @@ interface SideNavDrawerProps {
 const SideNavDrawer: React.FC<SideNavDrawerProps> = ({ isOpen, onClose, user, isLoggedIn, onLoginClick, onLogout, setPage, isStaffMode, onStaffAccess, setIsStaffMode }) => {
   const navLinks = [
     { id: 'home', icon: Home, label: 'Home' },
+    { id: 'party', icon: Users, label: 'Party Mode' },
     { id: 'menu', icon: ShoppingBag, label: 'Menu Metamorfosa' },
     { id: 'queue-history', icon: Clock, label: 'Antrean & History' },
     { id: 'voucher-promo', icon: Ticket, label: 'Voucher & Promo' },

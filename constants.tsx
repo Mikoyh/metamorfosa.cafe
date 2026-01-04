@@ -190,4 +190,3 @@ export const PROFILE_BANNERS = [
     }
     return banner;
 })
-];

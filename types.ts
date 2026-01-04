@@ -12,6 +12,7 @@ export interface MenuItem {
 
 export interface CartItem extends MenuItem {
   quantity: number;
+  addedBy: string; // Username of who added the item
 }
 
 export interface Voucher {
@@ -83,18 +84,44 @@ export interface BlockedUser {
 
 export type QueueStatus = 'IDLE' | 'WAITING' | 'COOKING' | 'READY' | 'DELIVERED';
 
-export type Page = 'home' | 'menu' | 'leaderboard' | 'shop' | 'wall' | 'profile' | 'staff' | 'voucher-promo' | 'queue-history' | 'edit-profile' | 'staff-settings';
+export type Page = 'home' | 'menu' | 'leaderboard' | 'shop' | 'wall' | 'profile' | 'staff' | 'voucher-promo' | 'queue-history' | 'edit-profile' | 'staff-settings' | 'party';
 
 export interface AppNotification {
   id: string;
-  type: 'QUEUE' | 'WALL_REPLY' | 'SYSTEM' | 'BIRTHDAY';
+  type: 'QUEUE' | 'WALL_REPLY' | 'SYSTEM' | 'BIRTHDAY' | 'PARTY_INVITE';
   title: string;
   message: string;
   read: boolean;
   timestamp: number;
+  payload?: any; // For party invite actions
 }
 
 export type ManualCafeStatus = {
   status: 'auto' | 'open' | 'closed';
+  gofoodStatus: 'auto' | 'open' | 'closed';
   closedUntil?: string; // ISO date string for temporary closures
 };
+
+// --- PARTY MODE TYPES ---
+export interface PartyMember {
+    name: string;
+    avatarId?: string;
+    frameId?: string;
+}
+
+export interface Party {
+    id: string;
+    name: string;
+    hostName: string;
+    members: PartyMember[];
+    isLocked: boolean;
+    createdAt: number;
+}
+
+export interface JoinRequest {
+    id: string;
+    partyId: string;
+    partyName: string;
+    requester: PartyMember;
+    timestamp: number;
+}

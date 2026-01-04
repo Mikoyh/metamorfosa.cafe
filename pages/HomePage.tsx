@@ -1,8 +1,8 @@
 
 import React, { useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { User as UserIcon, Trophy, Star, Phone, Instagram, Clock, Truck, ShoppingBasket, ShoppingBag, Heart, Zap, Search, XCircle } from 'lucide-react';
-import { User, Page, ActiveOrder, MenuItem, WallNote } from '../types';
+import { User as UserIcon, Users, Trophy, Star, Phone, Instagram, Clock, Truck, ShoppingBasket, ShoppingBag, Heart, Zap, Search, XCircle } from 'lucide-react';
+import { User, Page, ActiveOrder, MenuItem, WallNote, Party } from '../types';
 import { XP_FOR_LEVEL, FACILITIES_DATA, MENU_DATA, LOGO, PROFILE_BANNERS } from '../constants';
 import WallTicker from '../components/WallTicker';
 import Avatar from '../components/Avatar';
@@ -23,10 +23,28 @@ interface HomePageProps {
   wallNotes: WallNote[];
   isBirthday: boolean;
   isCafeOpen: boolean;
+  isGoFoodOpen: boolean;
+  currentTime: Date;
+  party: Party | undefined;
 }
 
-const HomePage: React.FC<HomePageProps> = ({ setPage, user, isLoggedIn, onLoginClick, userOrder, allActiveOrders, leaderboard, userHistory, onAddToCart, onProductClick, wallNotes, isBirthday, isCafeOpen }) => {
+const HomePage: React.FC<HomePageProps> = ({ setPage, user, isLoggedIn, onLoginClick, userOrder, allActiveOrders, leaderboard, userHistory, onAddToCart, onProductClick, wallNotes, isBirthday, isCafeOpen, isGoFoodOpen, currentTime, party }) => {
   const xpProgress = user.level < XP_FOR_LEVEL.length ? (user.xp / XP_FOR_LEVEL[user.level]) * 100 : 100;
+
+  const getGreeting = useMemo(() => {
+    const hours = currentTime.getHours();
+    const userName = isLoggedIn ? user.name : 'Bro';
+    
+    if (hours >= 0 && hours <= 5) return { text: "Waduh, masih bangun aja nih! Kafe udah tutup, mending istirahat dulu biar besok bisa ngopi bareng lagi!", emoji: "🌙" };
+    if (hours > 5 && hours < 9) return { text: `Semangat paginya ${userName}! Sayangnya kafe belum buka nih, kita mulai seduh kopi jam 09:00. Tungguin ya!`, emoji: "☕" };
+    if (hours >= 9 && hours < 12) return { text: `Selamat pagi ${userName}! Kafe udah buka nih. Yuk, mulai hari dengan segelas kopi biar nambah fokus!`, emoji: "☀️" };
+    if (hours >= 12 && hours < 15) return { text: `Siang-siang gini enaknya yang seger nih ${userName}. Mau pesen minuman dingin buat nemenin istirahat?`, emoji: "🍹" };
+    if (hours >= 15 && hours <= 18) return { text: `Sore yang nyore bgt ya ${userName}! Cocok banget buat nongkrong santai atau ngerjain tugas sambil ngemil.`, emoji: "🍰" };
+    if (hours > 18 && hours < 22) return { text: `Malam, ${userName}! Malam yang dingin paling pas ditemenin sama Hot Chocolate kita. Enjoy!`, emoji: "✨" };
+    if (hours >= 22 && hours <= 23) return { text: "Udah malem nih, sebentar lagi kita close order. Buruan pesen menu favorit sebelum tutup!", emoji: "🕒" };
+    
+    return { text: `Hello, ${userName}!`, emoji: "🍃" };
+  }, [currentTime, isLoggedIn, user.name]);
 
   const getBannerStyle = (bannerId?: string) => {
     if (!bannerId) return {};
@@ -56,31 +74,38 @@ const HomePage: React.FC<HomePageProps> = ({ setPage, user, isLoggedIn, onLoginC
           <div className="absolute top-0 right-0 w-48 h-48 bg-green-50 rounded-full -mr-20 -mt-20 opacity-40 blur-3xl" />
           
           <div className="relative z-10 flex justify-between items-start">
-            <div>
+            <div className="flex-1 min-w-0 pr-4">
               <p className="text-[10px] font-black text-[#1b4332]/40 uppercase tracking-[0.3em] mb-1">Metamorfosa Hub</p>
-              <h2 className="text-2xl font-black text-[#1b4332] tracking-tighter leading-none mb-3">
-                  {isBirthday ? `🎉 HBD, ${user.name}!` : `Hello, ${isLoggedIn ? user.name : 'Meta Guest'}!`}
+              <h2 className="text-lg font-black text-[#1b4332] tracking-tighter leading-tight mb-3">
+                  {isBirthday ? `🎉 HBD, ${user.name}!` : `${getGreeting.emoji} ${getGreeting.text}`}
               </h2>
+              <div className="border-t-2 border-green-100 my-4" />
               <div className="flex flex-wrap gap-2">
                   <div className={`flex items-center gap-1.5 text-[9px] font-black px-2.5 py-1 rounded-lg ${isCafeOpen ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-red-100 text-red-700 border border-red-200'}`}>
                     <div className={`w-1.5 h-1.5 rounded-full ${isCafeOpen ? 'bg-green-500' : 'bg-red-500'} animate-pulse`}></div>
                     {isCafeOpen ? 'CAFE: OPEN' : 'CAFE: CLOSED'}
                   </div>
-                   <div className={`flex items-center gap-1.5 text-[9px] font-black px-2.5 py-1 rounded-lg ${isCafeOpen ? 'bg-orange-100 text-orange-700 border border-orange-200' : 'bg-slate-100 text-slate-500 border border-slate-200'}`}>
+                   <div className={`flex items-center gap-1.5 text-[9px] font-black px-2.5 py-1 rounded-lg ${isGoFoodOpen ? 'bg-orange-100 text-orange-700 border border-orange-200' : 'bg-slate-100 text-slate-500 border border-slate-200'}`}>
                     <ShoppingBag size={10} />
-                    {isCafeOpen ? 'GOFOOD: ON' : 'GOFOOD: OFF'}
+                    {isGoFoodOpen ? 'GOFOOD: ON' : 'GOFOOD: OFF'}
                   </div>
               </div>
             </div>
-            {isLoggedIn ? (
-              <button onClick={() => setPage('profile')} className="active:scale-95 transition-all">
-                 <Avatar user={user} size="md" isOnline />
-              </button>
-            ) : (
-              <button onClick={onLoginClick} className="w-12 h-12 bg-white border border-slate-200 rounded-2xl flex items-center justify-center text-[#1b4332] shadow-sm active:scale-95 transition-all">
-                <UserIcon size={20} />
-              </button>
-            )}
+            <div className="flex-shrink-0 flex flex-col items-center gap-2">
+                {isLoggedIn ? (
+                  <button onClick={() => setPage('profile')} className="active:scale-95 transition-all">
+                     <Avatar user={user} size="md" isOnline />
+                  </button>
+                ) : (
+                  <button onClick={onLoginClick} className="w-16 h-16 bg-white border border-slate-200 rounded-3xl flex items-center justify-center text-[#1b4332] shadow-sm active:scale-95 transition-all">
+                    <UserIcon size={28} />
+                  </button>
+                )}
+                <button onClick={() => setPage('party')} className={`w-12 h-8 rounded-full flex items-center justify-center transition-all duration-300 shadow-sm border ${party ? 'bg-green-200 border-green-300 text-green-800' : 'bg-white border-slate-200 text-slate-400'}`}>
+                    <Users size={16} />
+                    {party && <span className="text-[10px] font-black ml-1">{party.members.length}</span>}
+                </button>
+            </div>
           </div>
           
           <div className="grid grid-cols-2 gap-3 px-1">

@@ -1,8 +1,9 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence, useAnimationControls } from 'framer-motion';
-import { X, ShoppingCart, Minus, Plus, Trash2, Trophy, AlertCircle } from 'lucide-react';
-import { CartItem } from '../types';
+import { X, ShoppingCart, Minus, Plus, Trash2, Trophy, AlertCircle, Users } from 'lucide-react';
+import { CartItem, Party, User } from '../types';
+import Avatar from './Avatar';
 
 const MotionDiv = motion.div as any;
 
@@ -14,24 +15,61 @@ interface CartSheetProps {
   checkout: (notes: string) => void;
   isLoggedIn: boolean;
   productAvailability: Record<string, boolean>;
+  party: Party | undefined;
+  user: User;
 }
 
-const CartSheet: React.FC<CartSheetProps> = ({ isOpen, onClose, cart, updateQuantity, checkout, isLoggedIn, productAvailability }) => {
+const CartSheet: React.FC<CartSheetProps> = ({ isOpen, onClose, cart, updateQuantity, checkout, isLoggedIn, productAvailability, party, user }) => {
   const [orderNotes, setOrderNotes] = useState('');
   const total = cart.reduce((acc, item) => acc + item.price * item.quantity, 0);
   const controls = useAnimationControls();
 
   const isCheckoutDisabled = useMemo(() => {
     if (cart.length === 0) return true;
-    // Checkout is disabled if any item in the cart is unavailable.
     return cart.some(item => !productAvailability[item.id]);
   }, [cart, productAvailability]);
+
+  const cartGroupedByUser = useMemo(() => {
+    if (!party) return null;
+    return cart.reduce((acc, item) => {
+      (acc[item.addedBy] = acc[item.addedBy] || []).push(item);
+      return acc;
+    }, {} as Record<string, CartItem[]>);
+  }, [cart, party]);
 
   useEffect(() => {
     if (isOpen) {
       controls.start({ y: 0 });
     }
   }, [isOpen, controls]);
+
+  const renderCartItems = (items: CartItem[], isPartyMode: boolean) => (
+    items.map((item) => {
+      const isAvailable = productAvailability[item.id];
+      const canEdit = !isPartyMode || item.addedBy === user.name;
+      return (
+        <div key={`${item.id}-${item.addedBy}`} className={`flex gap-4 items-center bg-white p-2 rounded-xl transition-opacity ${!isAvailable ? 'opacity-50' : ''}`}>
+          <img src={item.image} className="w-16 h-16 rounded-2xl object-cover border border-slate-100" />
+          <div className="flex-grow">
+            <h4 className={`font-bold text-sm ${!isAvailable ? 'text-red-500' : 'text-slate-800'}`}>{item.name}</h4>
+            {!isAvailable && <p className="text-xs font-bold text-red-600 mt-1">Stok Habis</p>}
+            <p className={`text-xs text-[#1b4332] font-bold mt-1 ${!isAvailable ? 'line-through' : ''}`}>Rp {(item.price * item.quantity).toLocaleString()}</p>
+          </div>
+          {canEdit ? (
+            <div className="flex items-center gap-3 bg-slate-50 p-1 rounded-xl border border-slate-100">
+              <button onClick={() => updateQuantity(item.id, -1)} className="w-7 h-7 rounded-lg bg-white flex items-center justify-center text-slate-700 shadow-sm border border-slate-100 active:scale-90 transition-transform">
+                <Trash2 size={14} className="text-red-500" />
+              </button>
+              <span className="font-bold text-sm min-w-[20px] text-center">{item.quantity}</span>
+              <button onClick={() => updateQuantity(item.id, 1)} className={`w-7 h-7 rounded-lg flex items-center justify-center text-white shadow-sm active:scale-90 transition-transform ${isAvailable ? 'bg-[#1b4332]' : 'bg-slate-300'}`} disabled={!isAvailable}><Plus size={14} /></button>
+            </div>
+          ) : (
+             <div className="font-bold text-sm min-w-[20px] text-center px-4">x{item.quantity}</div>
+          )}
+        </div>
+      )
+    })
+  );
 
   return (
     <AnimatePresence>
@@ -54,7 +92,7 @@ const CartSheet: React.FC<CartSheetProps> = ({ isOpen, onClose, cart, updateQuan
           >
             <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mt-4 mb-2" />
             <div className="px-6 py-4 flex justify-between items-center border-b border-slate-50">
-              <h2 className="text-xl font-bold text-[#1b4332]">Keranjang Saya</h2>
+              <h2 className="text-xl font-bold text-[#1b4332] flex items-center gap-2">{party ? <><Users size={20}/> Keranjang Bersama</> : 'Keranjang Saya'}</h2>
               <button onClick={onClose} className="p-2 rounded-full bg-slate-100 text-slate-500 active:scale-90"><X size={20} /></button>
             </div>
             <div className="flex-grow overflow-y-auto px-6 pb-40 no-scrollbar pt-2">
@@ -66,25 +104,29 @@ const CartSheet: React.FC<CartSheetProps> = ({ isOpen, onClose, cart, updateQuan
                 </div>
               ) : (
                 <div className="space-y-4 mt-2">
-                  {cart.map((item) => {
-                    const isAvailable = productAvailability[item.id];
-                    return (
-                    <div key={item.id} className={`flex gap-4 items-center bg-white p-2 rounded-xl transition-opacity ${!isAvailable ? 'opacity-50' : ''}`}>
-                      <img src={item.image} className="w-16 h-16 rounded-2xl object-cover border border-slate-100" />
-                      <div className="flex-grow">
-                        <h4 className={`font-bold text-sm ${!isAvailable ? 'text-red-500' : 'text-slate-800'}`}>{item.name}</h4>
-                        {!isAvailable && <p className="text-xs font-bold text-red-600 mt-1">Stok Habis</p>}
-                        <p className={`text-xs text-[#1b4332] font-bold mt-1 ${!isAvailable ? 'line-through' : ''}`}>Rp {(item.price * item.quantity).toLocaleString()}</p>
-                      </div>
-                      <div className="flex items-center gap-3 bg-slate-50 p-1 rounded-xl border border-slate-100">
-                        <button onClick={() => updateQuantity(item.id, -1)} className="w-7 h-7 rounded-lg bg-white flex items-center justify-center text-slate-700 shadow-sm border border-slate-100 active:scale-90 transition-transform">
-                          <Trash2 size={14} className="text-red-500" />
-                        </button>
-                        <span className="font-bold text-sm min-w-[20px] text-center">{item.quantity}</span>
-                        <button onClick={() => updateQuantity(item.id, 1)} className={`w-7 h-7 rounded-lg flex items-center justify-center text-white shadow-sm active:scale-90 transition-transform ${isAvailable ? 'bg-[#1b4332]' : 'bg-slate-300'}`} disabled={!isAvailable}><Plus size={14} /></button>
-                      </div>
-                    </div>
-                  )})}
+                  {/* FIX: Replaced Object.entries with Object.keys to fix TypeScript type inference issues.
+                      This ensures 'items' is correctly typed as CartItem[], resolving errors on '.reduce' and 'renderCartItems'. */}
+                  {party && cartGroupedByUser ? (
+                    Object.keys(cartGroupedByUser).map(memberName => {
+                      const items = cartGroupedByUser[memberName];
+                      const memberSubtotal = items.reduce((acc, item) => acc + item.price * item.quantity, 0);
+                      const memberInfo = party.members.find(m => m.name === memberName);
+                      return (
+                        <div key={memberName} className="bg-slate-50 rounded-2xl p-3 border border-slate-100">
+                          <div className="flex justify-between items-center mb-3">
+                              <div className="flex items-center gap-2">
+                                <Avatar user={{name: memberName, avatarId: memberInfo?.avatarId, frameId: memberInfo?.frameId} as User} size="sm" />
+                                <span className="text-xs font-bold text-slate-700">{memberName} {memberName === user.name && '(Kamu)'}</span>
+                              </div>
+                              <span className="text-xs font-black text-[#1b4332]">Rp {memberSubtotal.toLocaleString()}</span>
+                          </div>
+                          <div className="space-y-2">{renderCartItems(items, true)}</div>
+                        </div>
+                      )
+                    })
+                  ) : (
+                    renderCartItems(cart, false)
+                  )}
                   
                   <div className="mt-4">
                     <label htmlFor="order-notes" className="text-xs font-bold text-slate-600 px-1">Catatan Pesanan (opsional)</label>
@@ -106,8 +148,8 @@ const CartSheet: React.FC<CartSheetProps> = ({ isOpen, onClose, cart, updateQuan
                   <span className="text-2xl font-bold text-[#1b4332]">Rp {total.toLocaleString()}</span>
                 </div>
               </div>
-              <button onClick={() => checkout(orderNotes)} disabled={isCheckoutDisabled} className={`w-full py-4 rounded-2xl font-bold shadow-xl flex items-center justify-center gap-2 active:scale-95 transition-transform ${isCheckoutDisabled ? 'bg-slate-200 text-slate-400' : 'bg-[#1b4332] text-white shadow-green-900/20'}`}>
-                {isLoggedIn ? 'Pesan Sekarang' : 'Login untuk Memesan'}
+              <button onClick={() => checkout(orderNotes)} disabled={isCheckoutDisabled || (!!party && party.hostName !== user.name)} className={`w-full py-4 rounded-2xl font-bold shadow-xl flex items-center justify-center gap-2 active:scale-95 transition-transform ${isCheckoutDisabled || (!!party && party.hostName !== user.name) ? 'bg-slate-200 text-slate-400' : 'bg-[#1b4332] text-white shadow-green-900/20'}`}>
+                {party ? (party.hostName === user.name ? 'Pesan untuk Party' : 'Hanya Host yang bisa memesan') : (isLoggedIn ? 'Pesan Sekarang' : 'Login untuk Memesan')}
               </button>
             </div>
           </MotionDiv>

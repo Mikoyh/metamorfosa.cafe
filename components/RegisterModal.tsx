@@ -95,7 +95,7 @@ const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose, onLoginC
                                 onChange={e => handleOtpChange(e.target, index)}
                                 onKeyDown={e => handleOtpKeyDown(e, index)}
                                 onFocus={e => e.target.select()}
-// FIX: The ref callback for the OTP input must not return a value. Wrap assignment in curly braces to create a block statement.
+                                // FIX: The ref callback for the OTP input must not return a value. Wrapped assignment in curly braces to create a block statement.
                                 ref={el => { inputRefs.current[index] = el; }}
                                 className={`w-10 h-12 text-center text-xl font-bold rounded-lg border-2 bg-slate-100 transition-all ${otpError ? 'border-red-500' : 'border-slate-200 focus:border-[#1b4332]'}`} />
                         ))}

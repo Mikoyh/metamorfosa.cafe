@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { AnimatePresence, useScroll, useMotionValueEvent, motion } from 'framer-motion';
 
-import { MenuItem, CartItem, User, Page, ActiveOrder, AppNotification, WallNote, ManualCafeStatus } from './types';
+import { MenuItem, CartItem, User, Page, ActiveOrder, AppNotification, WallNote, ManualCafeStatus, Party, PartyMember, JoinRequest } from './types';
 import { MENU_DATA, XP_FOR_LEVEL, NPC_NOTE_SAMPLES, PASTEL_COLORS, AVATARS, PROFILE_BANNERS, NPC_RATING_NOTE_SAMPLES } from './constants';
 
 // Components
@@ -20,6 +20,7 @@ import PaymentModal from './components/PaymentModal';
 import ReceiptModal from './components/ReceiptModal';
 import RatingModal from './components/RatingModal';
 import CafeClosedModal from './components/CafeClosedModal';
+import JoinPartyRequestPopup from './components/JoinPartyRequestPopup';
 
 // Pages
 import HomePage from './pages/HomePage';
@@ -33,6 +34,7 @@ import LeaderboardPage from './pages/LeaderboardPage';
 import VoucherPromoPage from './pages/VoucherPromoPage';
 import QueueHistoryPage from './pages/QueueHistoryPage';
 import StaffSettingsPage from './pages/StaffSettingsPage';
+import PartyPage from './pages/PartyPage';
 
 const NPC_NAMES = ["Alex", "Sisca", "Budi", "Dewi", "Yoga", "Rina", "Joko", "Lina", "Eko", "Maya", "Didi", "Lulu"];
 const MotionDiv = motion.div as any;
@@ -82,13 +84,34 @@ export default function App() {
 
   const [wallNotes, setWallNotes] = useState<WallNote[]>([]);
 
+  // Party State
+  const [parties, setParties] = useState<Party[]>([]);
+  const [currentUserPartyId, setCurrentUserPartyId] = useState<string | null>(null);
+  const [joinRequests, setJoinRequests] = useState<JoinRequest[]>([]);
+  const currentParty = useMemo(() => parties.find(p => p.id === currentUserPartyId), [parties, currentUserPartyId]);
+
   // Cafe Operational State
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [manualCafeStatus, setManualCafeStatus] = useState<ManualCafeStatus>({ status: 'auto' });
+  const [manualCafeStatus, setManualCafeStatus] = useState<ManualCafeStatus>({ status: 'auto', gofoodStatus: 'auto' });
   const [productAvailability, setProductAvailability] = useState<Record<string, boolean>>({});
   const [isCafeClosedModalOpen, setIsCafeClosedModalOpen] = useState(false);
 
   useEffect(() => {
+    // Load party state from localStorage
+    const savedParties = localStorage.getItem('cafe_parties');
+    if (savedParties) {
+      setParties(JSON.parse(savedParties));
+    } else {
+        // Seed with a dummy party for debugging
+        const dummyParty: Party = { id: 'dummy-123', name: "Alex's Party", hostName: 'Alex', members: [{ name: 'Alex', avatarId: 'emoji-1' }], isLocked: false, createdAt: Date.now() };
+        setParties([dummyParty]);
+        localStorage.setItem('cafe_parties', JSON.stringify([dummyParty]));
+    }
+    
+    const savedPartyId = localStorage.getItem('cafe_current_party_id');
+    if(savedPartyId) setCurrentUserPartyId(savedPartyId);
+
+
     // Load operational state from localStorage
     const savedStatus = localStorage.getItem('cafe_manual_status');
     if (savedStatus) setManualCafeStatus(JSON.parse(savedStatus));
@@ -106,6 +129,84 @@ export default function App() {
     const timer = setInterval(() => setCurrentTime(new Date()), 60000);
     return () => clearInterval(timer);
   }, []);
+  
+  const updateParties = (newParties: Party[]) => {
+      setParties(newParties);
+      localStorage.setItem('cafe_parties', JSON.stringify(newParties));
+  }
+  
+  const handleCreateParty = (partyName: string) => {
+// FIX: Changed onLoginClick() to setIsLoginOpen(true) to resolve "Cannot find name 'onLoginClick'" error.
+      if(!isLoggedIn) { setIsLoginOpen(true); return; }
+      const newParty: Party = {
+          id: `party-${Date.now()}`,
+          name: partyName,
+          hostName: user.name,
+          members: [{ name: user.name, avatarId: user.avatarId, frameId: user.frameId }],
+          isLocked: false,
+          createdAt: Date.now(),
+      };
+      updateParties([...parties, newParty]);
+      setCurrentUserPartyId(newParty.id);
+      localStorage.setItem('cafe_current_party_id', newParty.id);
+  };
+  
+  const handleJoinPartyRequest = (party: Party) => {
+// FIX: Changed onLoginClick() to setIsLoginOpen(true) to resolve "Cannot find name 'onLoginClick'" error.
+    if(!isLoggedIn) { setIsLoginOpen(true); return; }
+    // In a real app, this would send a request to the host.
+    // For localStorage simulation, we add a request to a temporary state.
+    const newRequest: JoinRequest = {
+        id: `req-${Date.now()}`,
+        partyId: party.id,
+        partyName: party.name,
+        requester: { name: user.name, avatarId: user.avatarId, frameId: user.frameId },
+        timestamp: Date.now()
+    };
+    // Simulate host receiving the request.
+    setJoinRequests(prev => [...prev, newRequest]);
+    // Auto-move to notifications after a delay
+    setTimeout(() => {
+        setJoinRequests(prev => prev.filter(r => r.id !== newRequest.id));
+        setNotifications(n => [{
+            id: newRequest.id, type: 'PARTY_INVITE', title: 'Permintaan Bergabung',
+            message: `${newRequest.requester.name} ingin bergabung ke party "${newRequest.partyName}".`,
+            read: false, timestamp: Date.now(), payload: { request: newRequest }
+        }, ...n]);
+    }, 8000);
+  };
+
+  const handleLeaveParty = () => {
+      if(!currentUserPartyId) return;
+      if(currentParty?.hostName === user.name) { // Host leaves, disband party
+          updateParties(parties.filter(p => p.id !== currentUserPartyId));
+      } else { // Member leaves
+          const updatedParties = parties.map(p => {
+              if(p.id === currentUserPartyId) {
+                  return {...p, members: p.members.filter(m => m.name !== user.name)};
+              }
+              return p;
+          });
+          updateParties(updatedParties);
+      }
+      setCurrentUserPartyId(null);
+      localStorage.removeItem('cafe_current_party_id');
+      setCart([]); // Clear cart on leaving party
+  };
+
+  const handleRespondToJoinRequest = (request: JoinRequest, accepted: boolean) => {
+      setJoinRequests(prev => prev.filter(r => r.id !== request.id));
+      if(accepted) {
+          const updatedParties = parties.map(p => {
+              if (p.id === request.partyId && !p.members.some(m => m.name === request.requester.name)) {
+                  return { ...p, members: [...p.members, request.requester] };
+              }
+              return p;
+          });
+          updateParties(updatedParties);
+          // In real-time, you'd notify the requester they've been accepted.
+      }
+  };
 
   const updateManualCafeStatus = (newStatus: ManualCafeStatus) => {
     setManualCafeStatus(newStatus);
@@ -121,20 +222,27 @@ export default function App() {
   const isCafeOpen = useMemo(() => {
     if (manualCafeStatus.status === 'open') return true;
     if (manualCafeStatus.status === 'closed') return false;
-
-    // Check for temporary closure
     if (manualCafeStatus.closedUntil) {
         const closedUntilDate = new Date(manualCafeStatus.closedUntil);
         if (currentTime < closedUntilDate) return false;
     }
-    
-    // Automatic time-based logic
     const hours = currentTime.getHours();
     const minutes = currentTime.getMinutes();
     const time = hours + minutes / 60;
-    // Open from 09:00 (9.0) to 23:30 (23.5)
     return time >= 9 && time < 23.5;
   }, [currentTime, manualCafeStatus]);
+
+  const isGoFoodOpen = useMemo(() => {
+    if (!isCafeOpen) return false; // GoFood cannot be open if the cafe is closed.
+    if (manualCafeStatus.gofoodStatus === 'open') return true;
+    if (manualCafeStatus.gofoodStatus === 'closed') return false;
+    // Automatic time-based logic for GoFood
+    const hours = currentTime.getHours();
+    const minutes = currentTime.getMinutes();
+    const time = hours + minutes / 60;
+    // GoFood Open from 15:30 (15.5) to 23:30 (23.5)
+    return time >= 15.5 && time < 23.5;
+  }, [isCafeOpen, currentTime, manualCafeStatus.gofoodStatus]);
 
   const { scrollY } = useScroll();
   const [isHeaderVisible, setIsHeaderVisible] = useState(true);
@@ -150,29 +258,12 @@ export default function App() {
   const handleAddNote = (noteData: Pick<WallNote, 'text' | 'author' | 'color' | 'replyTo' | 'isNpc'>) => {
     setWallNotes(prev => {
         const { x, y } = findRandomSpot();
-        const newNote: WallNote = {
-            id: new Date().toISOString() + Math.random(),
-            ...noteData,
-            x, y,
-            timestamp: Date.now(),
-            reactions: {},
-            zIndex: prev.length + 1,
-        };
+        const newNote: WallNote = { id: new Date().toISOString() + Math.random(), ...noteData, x, y, timestamp: Date.now(), reactions: {}, zIndex: prev.length + 1 };
         const newNotes = [...prev, newNote];
         localStorage.setItem('wall_notes_v2', JSON.stringify(newNotes));
-        
         if (noteData.replyTo) {
             const parentNote = prev.find(n => n.id === noteData.replyTo);
-            if (parentNote && parentNote.author !== noteData.author) {
-                setNotifications(n => [{
-                    id: Date.now().toString(),
-                    type: 'WALL_REPLY',
-                    title: `Balasan Baru dari ${noteData.author}`,
-                    message: `"${noteData.text}"`,
-                    read: false,
-                    timestamp: Date.now()
-                }, ...n]);
-            }
+            if (parentNote && parentNote.author !== noteData.author) { setNotifications(n => [{ id: Date.now().toString(), type: 'WALL_REPLY', title: `Balasan Baru dari ${noteData.author}`, message: `"${noteData.text}"`, read: false, timestamp: Date.now() }, ...n]); }
         }
         return newNotes;
     });
@@ -196,8 +287,7 @@ export default function App() {
   };
 
   const generateDenseNpcNotes = () => {
-      const notes: WallNote[] = [];
-      const noteCount = 120;
+      const notes: WallNote[] = []; const noteCount = 120;
       for (let i = 0; i < noteCount; i++) {
         const sample = NPC_NOTE_SAMPLES[Math.floor(Math.random() * NPC_NOTE_SAMPLES.length)];
         const { x, y } = findRandomSpot();
@@ -248,11 +338,9 @@ export default function App() {
   useEffect(() => {
     const interval = setInterval(() => {
       if (!isCafeOpen) {
-        // If cafe is closed, clear all NPC orders to stop the queue.
         setAllActiveOrders(prev => prev.filter(o => !o.isNpc));
         return;
       }
-
       setAllActiveOrders(prev => {
         if (prev.length === 0) return prev;
         const oldestPendingIdx = prev.findIndex(o => o.status !== 'READY');
@@ -278,7 +366,7 @@ export default function App() {
       if (allActiveOrders.length < 8 && Math.random() > 0.65) {
         const npcUser = leaderboardData.find(u => u.name.startsWith(NPC_NAMES[Math.floor(Math.random() * NPC_NAMES.length)])) || leaderboardData[10];
         const randomItem = MENU_DATA[Math.floor(Math.random() * MENU_DATA.length)];
-        const newNpcOrder: ActiveOrder = { orderId: `NPC-${Math.floor(1000 + Math.random() * 9000)}`, user: npcUser, items: [{ ...randomItem, quantity: 1 }], status: 'WAITING', isNpc: true, tableNumber: String(Math.floor(Math.random() * 20) + 1), timestamp: Date.now(), countdown: 5 };
+        const newNpcOrder: ActiveOrder = { orderId: `NPC-${Math.floor(1000 + Math.random() * 9000)}`, user: npcUser, items: [{ ...randomItem, quantity: 1, addedBy: npcUser.name }], status: 'WAITING', isNpc: true, tableNumber: String(Math.floor(Math.random() * 20) + 1), timestamp: Date.now(), countdown: 5 };
         setAllActiveOrders(prev => [...prev, newNpcOrder]);
       }
     }, 8000);
@@ -295,6 +383,7 @@ export default function App() {
 
   const handlePageChange = (newPage: Page, data?: any) => {
     if (newPage === 'profile' && !isLoggedIn && !data?.user) { setIsLoginOpen(true); return; }
+    if (newPage === 'party' && !isLoggedIn) { setIsLoginOpen(true); return; }
     setPage({ name: newPage, data });
     setIsSideNavOpen(false); window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -309,22 +398,21 @@ export default function App() {
   };
 
   const handleAddToCart = (item: MenuItem & { quantity?: number }) => {
-    if (!productAvailability[item.id]) return; // Block adding unavailable items
+    if (!productAvailability[item.id]) return;
     const qty = item.quantity ?? 1;
     setCart(prev => {
-      const existing = prev.find(i => i.id === item.id);
-      if (existing) return prev.map(i => i.id === item.id ? { ...i, quantity: i.quantity + qty } : i);
-      return [...prev, { ...item, quantity: qty } as CartItem];
+        const existing = prev.find(i => i.id === item.id && i.addedBy === user.name);
+        if (existing) {
+            return prev.map(i => i.id === item.id && i.addedBy === user.name ? { ...i, quantity: i.quantity + qty } : i);
+        }
+        return [...prev, { ...item, quantity: qty, addedBy: user.name } as CartItem];
     });
     setCartFeedback(item.name); setIsHeaderVisible(true);
     setTimeout(() => setCartFeedback(null), 3000);
   };
   
   const handleInitiateCheckout = (orderData: { items: CartItem[], notes?: string }) => {
-    if (!isCafeOpen) {
-        setIsCafeClosedModalOpen(true);
-        return;
-    }
+    if (!isCafeOpen) { setIsCafeClosedModalOpen(true); return; }
     setOrderToPay(orderData);
     isLoggedIn ? setIsPaymentModalOpen(true) : setIsLoginOpen(true);
   };
@@ -350,7 +438,12 @@ export default function App() {
     setIsLoggedIn(true); setIsLoginOpen(false);
   };
 
-  const handleLogout = () => { setIsLoggedIn(false); setUser(GUEST_USER); handlePageChange('home'); };
+  const handleLogout = () => { 
+    handleLeaveParty();
+    setIsLoggedIn(false); 
+    setUser(GUEST_USER); 
+    handlePageChange('home'); 
+  };
 
   const handleVerifyOtp = (otp: string): boolean => { if (otp === "123456") { setRegistrationStep('profile'); return true; } return false; };
 
@@ -378,15 +471,24 @@ export default function App() {
     <div className="max-w-md mx-auto min-h-screen bg-green-50/20 shadow-2xl relative flex flex-col">
       <Header isVisible={isHeaderVisible} onMenuClick={() => setIsSideNavOpen(true)} cartCount={cart.reduce((a,b)=>a+b.quantity,0)} hasNotification={unreadCount > 0} unreadCount={unreadCount} onCartClick={() => setIsCartOpen(true)} onNotificationClick={() => setIsNotificationOpen(true)} setPage={handlePageChange} isStaffMode={isStaffMode} />
       <SideNavDrawer isOpen={isSideNavOpen} onClose={() => setIsSideNavOpen(false)} user={user} isLoggedIn={isLoggedIn} onLoginClick={() => setIsLoginOpen(true)} onLogout={handleLogout} setPage={(p) => handlePageChange(p)} isStaffMode={isStaffMode} onStaffAccess={() => setIsStaffPasswordModalOpen(true)} setIsStaffMode={setIsStaffMode} />
+       <AnimatePresence>
+        {joinRequests.length > 0 && user.name === joinRequests[0].partyName.split("'s")[0] && (
+            <JoinPartyRequestPopup 
+                request={joinRequests[0]} 
+                onRespond={(accepted) => handleRespondToJoinRequest(joinRequests[0], accepted)}
+            />
+        )}
+       </AnimatePresence>
 
       <main className="flex-grow">
         <AnimatePresence mode="wait">
-          {page.name === 'home' && <HomePage key="home" setPage={handlePageChange} user={user} isLoggedIn={isLoggedIn} onLoginClick={() => setIsLoginOpen(true)} userOrder={allActiveOrders.find(o => !o.isNpc && o.user.name === user.name)} allActiveOrders={allActiveOrders} leaderboard={leaderboardData.slice(0, 5)} userHistory={userHistory} onAddToCart={handleAddToCart} onProductClick={setSelectedProduct} wallNotes={wallNotes} isBirthday={isBirthday} isCafeOpen={isCafeOpen} />}
+          {page.name === 'home' && <HomePage key="home" setPage={handlePageChange} user={user} isLoggedIn={isLoggedIn} onLoginClick={() => setIsLoginOpen(true)} userOrder={allActiveOrders.find(o => !o.isNpc && o.user.name === user.name)} allActiveOrders={allActiveOrders} leaderboard={leaderboardData.slice(0, 5)} userHistory={userHistory} onAddToCart={handleAddToCart} onProductClick={setSelectedProduct} wallNotes={wallNotes} isBirthday={isBirthday} isCafeOpen={isCafeOpen} isGoFoodOpen={isGoFoodOpen} currentTime={currentTime} party={currentParty} />}
           {page.name === 'menu' && <MenuPage key="menu" onProductClick={setSelectedProduct} onAddToCart={handleAddToCart} isHeaderVisible={isHeaderVisible} favorites={user.favorites} toggleFavorite={toggleFavorite} menuOptions={page.data} isCafeOpen={isCafeOpen} productAvailability={productAvailability} />}
           {page.name === 'staff' && <StaffPage key="staff" activeOrders={allActiveOrders} onMarkReady={handleMarkReady} />}
           {page.name === 'staff-settings' && <StaffSettingsPage key="staff-settings" manualCafeStatus={manualCafeStatus} onUpdateCafeStatus={updateManualCafeStatus} productAvailability={productAvailability} onUpdateProductAvailability={updateProductAvailability} />}
           {page.name === 'wall' && <WallPage key="wall" user={user} onLoginClick={() => setIsLoginOpen(true)} isHeaderVisible={isHeaderVisible} isStaffMode={isStaffMode} setPage={handlePageChange} leaderboardData={leaderboardData} wallNotes={wallNotes} onAddNote={handleAddNote} onUpdateNote={handleUpdateNote} onDeleteNote={handleDeleteNote} />}
           {page.name === 'shop' && <ShopPage key="shop" user={user} onRedeemVoucher={() => {}} />}
+          {page.name === 'party' && <PartyPage key="party" user={user} parties={parties} currentParty={currentParty} onCreateParty={handleCreateParty} onJoinPartyRequest={handleJoinPartyRequest} onLeaveParty={handleLeaveParty} />}
           {page.name === 'profile' && <ProfilePage key="profile" profileUser={page.data?.user || user} currentUser={user} onLogout={handleLogout} history={userHistory} onLoginClick={() => setIsLoginOpen(true)} isLoggedIn={isLoggedIn} setPage={handlePageChange} onAddToCart={handleAddToCart} onProductClick={setSelectedProduct} />}
           {page.name === 'edit-profile' && <EditProfilePage key="edit-profile" user={user} onSave={(updatedUser) => { setUser(updatedUser); handlePageChange('profile'); }} onCancel={() => handlePageChange('profile')} />}
           {page.name === 'leaderboard' && <LeaderboardPage key="leaderboard" data={leaderboardData} currentUser={user} setPage={handlePageChange} />}
@@ -405,8 +507,8 @@ export default function App() {
 
       <BottomNav page={page.name} setPage={(p) => handlePageChange(p)} isLoggedIn={isLoggedIn} onLoginClick={() => setIsLoginOpen(true)} isStaffMode={isStaffMode} onLogout={isStaffMode ? handleStaffExit : handleLogout} onCartClick={() => setIsCartOpen(true)} cartCount={cart.reduce((a,b)=>a+b.quantity,0)} />
 
-      <ProductDetailSheet product={selectedProduct} isOpen={!!selectedProduct} onClose={() => setSelectedProduct(null)} isLoggedIn={isLoggedIn} onLogin={() => setIsLoginOpen(true)} onAddToCart={handleAddToCart} onPesanSekarang={(item, qty) => handleInitiateCheckout({ items: [{ ...item, quantity: qty }] })} isCafeOpen={isCafeOpen} isAvailable={selectedProduct ? productAvailability[selectedProduct.id] : false} />
-      <CartSheet isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} cart={cart} updateQuantity={(id, d) => setCart(prev => prev.map(i => i.id === id ? { ...i, quantity: Math.max(0, i.quantity + d) } : i).filter(i => i.quantity > 0))} checkout={(notes) => handleInitiateCheckout({ items: cart, notes })} isLoggedIn={isLoggedIn} productAvailability={productAvailability} />
+      <ProductDetailSheet product={selectedProduct} isOpen={!!selectedProduct} onClose={() => setSelectedProduct(null)} isLoggedIn={isLoggedIn} onLogin={() => setIsLoginOpen(true)} onAddToCart={handleAddToCart} onPesanSekarang={(item, qty) => handleInitiateCheckout({ items: [{ ...item, quantity: qty, addedBy: user.name }] })} isCafeOpen={isCafeOpen} isAvailable={selectedProduct ? productAvailability[selectedProduct.id] : false} />
+      <CartSheet isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} cart={cart} updateQuantity={(id, d) => setCart(prev => prev.map(i => i.id === id && i.addedBy === user.name ? { ...i, quantity: Math.max(0, i.quantity + d) } : i).filter(i => i.quantity > 0))} checkout={(notes) => handleInitiateCheckout({ items: cart, notes })} isLoggedIn={isLoggedIn} productAvailability={productAvailability} party={currentParty} user={user} />
       
       <PaymentModal isOpen={isPaymentModalOpen} onClose={() => setIsPaymentModalOpen(false)} order={orderToPay} onConfirm={handleConfirmPayment} />
       <ReceiptModal isOpen={isReceiptOpen} onClose={() => setIsReceiptOpen(false)} order={lastCompletedOrder} />
@@ -416,7 +518,7 @@ export default function App() {
       <RegisterModal isOpen={isRegisterOpen} onClose={() => setIsRegisterOpen(false)} step={registrationStep} setStep={setRegistrationStep} email={registrationEmail} setEmail={setRegistrationEmail} onVerifyOtp={handleVerifyOtp} onCreateProfile={handleCreateProfile} onLoginClick={() => { setIsRegisterOpen(false); setIsLoginOpen(true); }} />
 
       <StaffPasswordModal isOpen={isStaffPasswordModalOpen} onClose={() => setIsStaffPasswordModalOpen(false)} onSubmit={(pw) => { if (pw === 'J4wCH7Mxr5M+m4@') { setIsStaffMode(true); handlePageChange('staff'); setIsStaffPasswordModalOpen(false); } else { alert('Password Salah!'); } }} />
-      <NotificationSheet isOpen={isNotificationOpen} onClose={() => setIsNotificationOpen(false)} queueStatus="IDLE" notifications={notifications} setNotifications={setNotifications} />
+      <NotificationSheet isOpen={isNotificationOpen} onClose={() => setIsNotificationOpen(false)} queueStatus="IDLE" notifications={notifications} setNotifications={setNotifications} onRespondToJoinRequest={handleRespondToJoinRequest}/>
       <CafeClosedModal isOpen={isCafeClosedModalOpen} onClose={() => setIsCafeClosedModalOpen(false)} />
     </div>
   );

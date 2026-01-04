@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Power, PowerOff, Clock, Calendar, Check, Save, Package, PackageCheck, PackageX } from 'lucide-react';
+import { Power, PowerOff, Clock, Calendar, ShoppingBag } from 'lucide-react';
 import { ManualCafeStatus } from '../types';
 import { MENU_DATA } from '../constants';
 
@@ -21,7 +21,11 @@ const StaffSettingsPage: React.FC<StaffSettingsPageProps> = ({
   const [tempCloseDays, setTempCloseDays] = useState(1);
 
   const handleStatusChange = (status: 'auto' | 'open' | 'closed') => {
-    onUpdateCafeStatus({ status, closedUntil: undefined });
+    onUpdateCafeStatus({ ...manualCafeStatus, status, closedUntil: undefined });
+  };
+
+  const handleGoFoodStatusChange = (gofoodStatus: 'auto' | 'open' | 'closed') => {
+    onUpdateCafeStatus({ ...manualCafeStatus, gofoodStatus });
   };
 
   const handleSetTempClose = () => {
@@ -29,7 +33,7 @@ const StaffSettingsPage: React.FC<StaffSettingsPageProps> = ({
       const closeDate = new Date();
       closeDate.setDate(closeDate.getDate() + tempCloseDays);
       closeDate.setHours(9, 0, 0, 0); // Re-opens at 9 AM
-      onUpdateCafeStatus({ status: 'auto', closedUntil: closeDate.toISOString() });
+      onUpdateCafeStatus({ ...manualCafeStatus, status: 'auto', closedUntil: closeDate.toISOString() });
     }
   };
   
@@ -83,6 +87,25 @@ const StaffSettingsPage: React.FC<StaffSettingsPageProps> = ({
               <span className="flex items-center font-bold text-slate-500">hari</span>
               <button onClick={handleSetTempClose} className="flex-grow bg-slate-800 text-white font-bold rounded-lg flex items-center justify-center gap-2"><Calendar size={16} /> Atur</button>
             </div>
+          </div>
+        </section>
+
+        {/* GoFood Status Management */}
+        <section className="bg-white p-6 rounded-[2rem] shadow-md border border-slate-200">
+          <h3 className="font-bold text-lg text-slate-800 mb-4 flex items-center gap-2"><ShoppingBag size={20} className="text-orange-500" /> Status GoFood</h3>
+          <div className="grid grid-cols-3 gap-2">
+            <button onClick={() => handleGoFoodStatusChange('auto')} className={`flex flex-col items-center justify-center p-3 rounded-2xl border-2 transition-all ${manualCafeStatus.gofoodStatus === 'auto' ? 'bg-blue-50 border-blue-400' : 'bg-slate-50 border-transparent'}`}>
+              <Clock size={20} className="mb-1 text-blue-500" />
+              <span className="text-xs font-bold text-blue-800">Otomatis</span>
+            </button>
+            <button onClick={() => handleGoFoodStatusChange('open')} className={`flex flex-col items-center justify-center p-3 rounded-2xl border-2 transition-all ${manualCafeStatus.gofoodStatus === 'open' ? 'bg-green-50 border-green-400' : 'bg-slate-50 border-transparent'}`}>
+              <Power size={20} className="mb-1 text-green-500" />
+              <span className="text-xs font-bold text-green-800">Buka</span>
+            </button>
+            <button onClick={() => handleGoFoodStatusChange('closed')} className={`flex flex-col items-center justify-center p-3 rounded-2xl border-2 transition-all ${manualCafeStatus.gofoodStatus === 'closed' ? 'bg-red-50 border-red-400' : 'bg-slate-50 border-transparent'}`}>
+              <PowerOff size={20} className="mb-1 text-red-500" />
+              <span className="text-xs font-bold text-red-800">Tutup</span>
+            </button>
           </div>
         </section>
 
