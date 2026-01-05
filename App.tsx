@@ -530,9 +530,13 @@ export default function App() {
   const unreadCount = notifications.filter(n => !n.read).length;
 
   return (
-    <div className="max-w-md mx-auto min-h-screen bg-green-50/20 shadow-2xl relative flex flex-col">
-      <Header isVisible={isHeaderVisible} onMenuClick={() => setIsSideNavOpen(true)} cartCount={cart.reduce((a,b)=>a+b.quantity,0)} hasNotification={unreadCount > 0} unreadCount={unreadCount} onCartClick={() => setIsCartOpen(true)} onNotificationClick={() => setIsNotificationOpen(true)} setPage={handlePageChange} isStaffMode={isStaffMode} />
+    <div className="lg:flex max-w-7xl mx-auto">
       <SideNavDrawer isOpen={isSideNavOpen} onClose={() => setIsSideNavOpen(false)} user={user} isLoggedIn={isLoggedIn} onLoginClick={() => setIsLoginOpen(true)} onLogout={handleLogout} setPage={(p) => handlePageChange(p)} isStaffMode={isStaffMode} onStaffAccess={() => setIsStaffPasswordModalOpen(true)} setIsStaffMode={setIsStaffMode} />
+      
+      <div className="flex-grow min-h-screen bg-green-50/20 shadow-2xl relative flex flex-col lg:ml-72">
+        <div className="lg:hidden">
+            <Header isVisible={isHeaderVisible} onMenuClick={() => setIsSideNavOpen(true)} cartCount={cart.reduce((a,b)=>a+b.quantity,0)} hasNotification={unreadCount > 0} unreadCount={unreadCount} onCartClick={() => setIsCartOpen(true)} onNotificationClick={() => setIsNotificationOpen(true)} setPage={handlePageChange} isStaffMode={isStaffMode} />
+        </div>
        <AnimatePresence>
         {joinRequests.length > 0 && user.name === joinRequests[0].partyName.split("'s")[0] && (
             <JoinPartyRequestPopup 
@@ -542,7 +546,7 @@ export default function App() {
         )}
        </AnimatePresence>
 
-      <main className="flex-grow">
+      <main className="flex-grow max-w-md mx-auto w-full lg:max-w-none">
         <AnimatePresence mode="wait">
           {page.name === 'home' && <HomePage key="home" setPage={handlePageChange} user={user} isLoggedIn={isLoggedIn} onLoginClick={() => setIsLoginOpen(true)} userOrder={allActiveOrders.find(o => !o.isNpc && o.user.name === user.name)} allActiveOrders={allActiveOrders} leaderboard={leaderboardData.slice(0, 5)} userHistory={userHistory} onAddToCart={handleAddToCart} onProductClick={setSelectedProduct} wallNotes={wallNotes} isBirthday={isBirthday} isCafeOpen={isCafeOpen} isGoFoodOpen={isGoFoodOpen} currentTime={currentTime} party={currentParty} availableVouchers={VOUCHER_DATA} />}
           {page.name === 'menu' && <MenuPage key="menu" onProductClick={setSelectedProduct} onAddToCart={handleAddToCart} isHeaderVisible={isHeaderVisible} favorites={user.favorites} toggleFavorite={toggleFavorite} menuOptions={page.data} isCafeOpen={isCafeOpen} productAvailability={productAvailability} />}
@@ -560,14 +564,16 @@ export default function App() {
       </main>
 
       <AnimatePresence>
-        {cartFeedback && (<MotionDiv initial={{ y: 50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 50, opacity: 0 }} className="fixed top-20 left-1/2 -translate-x-1/2 z-[600] bg-[#1b4332] text-white px-6 py-3 rounded-full shadow-2xl font-bold text-xs flex items-center gap-2 whitespace-nowrap">✅ {cartFeedback} masuk keranjang</MotionDiv> )}
+        {cartFeedback && (<MotionDiv initial={{ y: 50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 50, opacity: 0 }} className="fixed top-20 left-1/2 -translate-x-1/2 z-[600] bg-[#1b4332] text-white px-6 py-3 rounded-full shadow-2xl font-bold text-xs flex items-center gap-2 whitespace-nowrap lg:left-auto lg:right-8 lg:translate-x-0">✅ {cartFeedback} masuk keranjang</MotionDiv> )}
       </AnimatePresence>
       
       <AnimatePresence>
         {page.name === 'menu' && cart.length > 0 && !isCartOpen && (<CartInfoBar cart={cart} onOpenCart={() => setIsCartOpen(true)} /> )}
       </AnimatePresence>
-
-      <BottomNav page={page.name} setPage={(p) => handlePageChange(p)} isLoggedIn={isLoggedIn} onLoginClick={() => setIsLoginOpen(true)} isStaffMode={isStaffMode} onLogout={isStaffMode ? handleStaffExit : handleLogout} onCartClick={() => setIsCartOpen(true)} cartCount={cart.reduce((a,b)=>a+b.quantity,0)} />
+      
+      <div className="lg:hidden">
+        <BottomNav page={page.name} setPage={(p) => handlePageChange(p)} isLoggedIn={isLoggedIn} onLoginClick={() => setIsLoginOpen(true)} isStaffMode={isStaffMode} onLogout={isStaffMode ? handleStaffExit : handleLogout} onCartClick={() => setIsCartOpen(true)} cartCount={cart.reduce((a,b)=>a+b.quantity,0)} />
+      </div>
 
       <ProductDetailSheet product={selectedProduct} isOpen={!!selectedProduct} onClose={() => setSelectedProduct(null)} isLoggedIn={isLoggedIn} onLogin={() => setIsLoginOpen(true)} onAddToCart={handleAddToCart} onPesanSekarang={(item, qty) => handleInitiateCheckout({ items: [{ ...item, quantity: qty, addedBy: user.name }] })} isCafeOpen={isCafeOpen} isAvailable={selectedProduct ? productAvailability[selectedProduct.id] : false} />
       <CartSheet isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} cart={cart} updateQuantity={(id, d, name) => setCart(prev => prev.map(i => i.id === id && i.addedBy === name ? { ...i, quantity: Math.max(0, i.quantity + d) } : i).filter(i => i.quantity > 0))} checkout={(notes) => handleInitiateCheckout({ items: cart, notes })} isLoggedIn={isLoggedIn} productAvailability={productAvailability} party={currentParty} user={user} />
@@ -582,6 +588,7 @@ export default function App() {
       <StaffPasswordModal isOpen={isStaffPasswordModalOpen} onClose={() => setIsStaffPasswordModalOpen(false)} onSubmit={(pw) => { if (pw === 'J4wCH7Mxr5M+m4@') { setIsStaffMode(true); handlePageChange('staff'); setIsStaffPasswordModalOpen(false); } else { alert('Password Salah!'); } }} />
       <NotificationSheet isOpen={isNotificationOpen} onClose={() => setIsNotificationOpen(false)} queueStatus="IDLE" notifications={notifications} setNotifications={setNotifications} onRespondToJoinRequest={handleRespondToJoinRequest}/>
       <CafeClosedModal isOpen={isCafeClosedModalOpen} onClose={() => setIsCafeClosedModalOpen(false)} />
+    </div>
     </div>
   );
 }

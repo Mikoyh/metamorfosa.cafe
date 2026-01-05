@@ -195,12 +195,12 @@ const WallPage: React.FC<WallPageProps> = ({ user, onLoginClick, isHeaderVisible
     const isNotePinned = contextNote?.pinnedUntil && contextNote.pinnedUntil > Date.now();
 
     return (
-        <div className="relative bg-slate-50 pt-16 pb-32" onClick={handleWallClick}>
+        <div className="relative bg-slate-50 pt-16 lg:pt-0 pb-32" onClick={handleWallClick}>
              <MotionDiv 
                 initial={{ y: 0 }} 
                 animate={{ y: isHeaderVisible ? 0 : '-100%', filter: focusedNoteId ? 'blur(4px)' : 'blur(0px)' }} 
                 transition={{ duration: 0.3, ease: 'easeInOut' }}
-                className="p-4 bg-white/80 backdrop-blur-md border-b border-slate-200 z-[600] fixed top-16 left-0 right-0 max-w-md mx-auto"
+                className="p-4 bg-white/80 backdrop-blur-md border-b border-slate-200 z-[600] fixed top-16 left-0 right-0 max-w-md mx-auto lg:relative lg:top-0 lg:max-w-none lg:rounded-b-2xl"
             >
                 <div className="flex justify-between items-center">
                     <h2 className="font-bold text-lg">Wall of Thoughts</h2>
@@ -231,7 +231,7 @@ const WallPage: React.FC<WallPageProps> = ({ user, onLoginClick, isHeaderVisible
                 {focusedNoteId && ( <MotionDiv onClick={handleWallClick} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/20 backdrop-blur-sm z-[1000]" /> )}
             </AnimatePresence>
 
-            <div className="relative w-full max-w-md mx-auto bg-amber-50" style={{ height: `${WALL_HEIGHT}px`, backgroundImage: `radial-gradient(#00000011 1px, transparent 1px)`, backgroundSize: `20px 20px` }}>
+            <div className="relative w-full max-w-md mx-auto bg-amber-50 lg:max-w-none" style={{ height: `${WALL_HEIGHT}px`, backgroundImage: `radial-gradient(#00000011 1px, transparent 1px)`, backgroundSize: `20px 20px` }}>
                 <AnimatePresence>
                 {wallNotes.map(note => (
                     <WallNoteComponent 

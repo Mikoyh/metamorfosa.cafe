@@ -87,7 +87,7 @@ const MenuPage: React.FC<MenuPageProps> = ({ onProductClick, onAddToCart, isHead
   return (
     <div className="pb-48 min-h-screen bg-slate-50/30">
       <MotionDiv 
-        className="fixed left-0 right-0 z-40 bg-white border-b border-slate-100 shadow-sm max-w-md mx-auto top-16"
+        className="fixed left-0 right-0 z-40 bg-white border-b border-slate-100 shadow-sm max-w-md mx-auto top-16 lg:hidden"
         animate={{ y: isHeaderVisible ? 0 : '-64px' }}
         transition={{ duration: 0.3, ease: 'easeInOut' }}
       >
@@ -115,7 +115,7 @@ const MenuPage: React.FC<MenuPageProps> = ({ onProductClick, onAddToCart, isHead
         </div>
       </MotionDiv>
       
-      <div className="pt-32 px-4 space-y-8">
+      <div className="pt-32 lg:pt-12 px-4 space-y-8">
         {!isCafeOpen && (
              <div className="bg-red-50 p-4 rounded-2xl border border-red-100 flex items-center gap-3">
                 <XCircle className="text-red-500" />
@@ -129,7 +129,7 @@ const MenuPage: React.FC<MenuPageProps> = ({ onProductClick, onAddToCart, isHead
           <div key={section.category} id={`section-${section.category}`}>
             <h3 className="font-black text-xs text-[#1b4332]/40 mb-4 flex items-center gap-3"><span className="uppercase tracking-[0.3em]">{section.category}</span><div className="flex-grow h-px bg-slate-100" /></h3>
             {section.items.length > 0 ? (
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                   {section.items.map(item => {
                     const isItemAvailable = item.isAvailable ?? true;
                     const canInteract = isItemAvailable && isCafeOpen;
