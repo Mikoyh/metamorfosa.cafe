@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Users, Plus, Lock, Unlock, LogOut, Check, Shield, UserPlus, DoorOpen, Crown } from 'lucide-react';
+import { Users, Plus, Lock, Unlock, LogOut, Check, Shield, UserPlus, DoorOpen, Crown, LoaderCircle } from 'lucide-react';
 import { User, Party } from '../types';
 import Avatar from '../components/Avatar';
 
@@ -12,10 +12,10 @@ interface PartyPageProps {
   onCreateParty: (name: string) => void;
   onJoinPartyRequest: (party: Party) => void;
   onLeaveParty: () => void;
-  // onLockParty, onDisbandParty etc. would be added here
+  pendingJoinRequests: string[];
 }
 
-const PartyPage: React.FC<PartyPageProps> = ({ user, parties, currentParty, onCreateParty, onJoinPartyRequest, onLeaveParty }) => {
+const PartyPage: React.FC<PartyPageProps> = ({ user, parties, currentParty, onCreateParty, onJoinPartyRequest, onLeaveParty, pendingJoinRequests }) => {
   const [partyName, setPartyName] = useState(`${user.name}'s Party`);
 
   if (currentParty) {
@@ -85,17 +85,20 @@ const PartyPage: React.FC<PartyPageProps> = ({ user, parties, currentParty, onCr
             {parties.length === 0 ? (
                 <p className="text-center text-sm text-slate-400 py-8">Belum ada party yang dibuat.</p>
             ) : (
-                parties.map(party => (
-                    <div key={party.id} className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex justify-between items-center">
-                        <div>
-                            <p className="font-bold text-slate-800">{party.name}</p>
-                            <p className="text-xs text-slate-500">{party.members.length} anggota • Host: {party.hostName}</p>
+                parties.map(party => {
+                    const isPending = pendingJoinRequests.includes(party.id);
+                    return (
+                        <div key={party.id} className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex justify-between items-center">
+                            <div>
+                                <p className="font-bold text-slate-800">{party.name}</p>
+                                <p className="text-xs text-slate-500">{party.members.length} anggota • Host: {party.hostName}</p>
+                            </div>
+                            <button onClick={() => onJoinPartyRequest(party)} disabled={isPending} className={`px-4 py-2 text-xs font-bold rounded-lg flex items-center gap-1.5 transition-colors w-28 justify-center ${isPending ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700'}`}>
+                                {isPending ? <> <LoaderCircle size={14} className="animate-spin" /> REQUESTED... </> : <> <UserPlus size={14}/> JOIN </>}
+                            </button>
                         </div>
-                        <button onClick={() => onJoinPartyRequest(party)} className="px-4 py-2 bg-green-100 text-green-700 text-xs font-bold rounded-lg flex items-center gap-1">
-                            <UserPlus size={14}/> JOIN
-                        </button>
-                    </div>
-                ))
+                    )
+                })
             )}
             </div>
         </div>

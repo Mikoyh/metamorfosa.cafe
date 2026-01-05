@@ -37,6 +37,7 @@ import StaffSettingsPage from './pages/StaffSettingsPage';
 import PartyPage from './pages/PartyPage';
 
 const NPC_NAMES = ["Alex", "Sisca", "Budi", "Dewi", "Yoga", "Rina", "Joko", "Lina", "Eko", "Maya", "Didi", "Lulu"];
+const BOT_HOSTS = ["Alex"];
 const MotionDiv = motion.div as any;
 
 interface PageState {
@@ -88,6 +89,7 @@ export default function App() {
   const [parties, setParties] = useState<Party[]>([]);
   const [currentUserPartyId, setCurrentUserPartyId] = useState<string | null>(null);
   const [joinRequests, setJoinRequests] = useState<JoinRequest[]>([]);
+  const [pendingJoinRequests, setPendingJoinRequests] = useState<string[]>([]);
   const currentParty = useMemo(() => parties.find(p => p.id === currentUserPartyId), [parties, currentUserPartyId]);
 
   // Cafe Operational State
@@ -102,7 +104,6 @@ export default function App() {
     if (savedParties) {
       setParties(JSON.parse(savedParties));
     } else {
-        // Seed with a dummy party for debugging
         const dummyParty: Party = { id: 'dummy-123', name: "Alex's Party", hostName: 'Alex', members: [{ name: 'Alex', avatarId: 'emoji-1' }], isLocked: false, createdAt: Date.now() };
         setParties([dummyParty]);
         localStorage.setItem('cafe_parties', JSON.stringify([dummyParty]));
@@ -111,8 +112,6 @@ export default function App() {
     const savedPartyId = localStorage.getItem('cafe_current_party_id');
     if(savedPartyId) setCurrentUserPartyId(savedPartyId);
 
-
-    // Load operational state from localStorage
     const savedStatus = localStorage.getItem('cafe_manual_status');
     if (savedStatus) setManualCafeStatus(JSON.parse(savedStatus));
 
@@ -120,12 +119,10 @@ export default function App() {
     if (savedAvailability) {
       setProductAvailability(JSON.parse(savedAvailability));
     } else {
-      // Initialize all products as available
       const initialAvailability: Record<string, boolean> = {};
       MENU_DATA.forEach(item => { initialAvailability[item.id] = true; });
       setProductAvailability(initialAvailability);
     }
-     // Update time every minute
     const timer = setInterval(() => setCurrentTime(new Date()), 60000);
     return () => clearInterval(timer);
   }, []);
@@ -136,7 +133,6 @@ export default function App() {
   }
   
   const handleCreateParty = (partyName: string) => {
-// FIX: Changed onLoginClick() to setIsLoginOpen(true) to resolve "Cannot find name 'onLoginClick'" error.
       if(!isLoggedIn) { setIsLoginOpen(true); return; }
       const newParty: Party = {
           id: `party-${Date.now()}`,
@@ -152,10 +148,26 @@ export default function App() {
   };
   
   const handleJoinPartyRequest = (party: Party) => {
-// FIX: Changed onLoginClick() to setIsLoginOpen(true) to resolve "Cannot find name 'onLoginClick'" error.
     if(!isLoggedIn) { setIsLoginOpen(true); return; }
-    // In a real app, this would send a request to the host.
-    // For localStorage simulation, we add a request to a temporary state.
+    setPendingJoinRequests(prev => [...prev, party.id]);
+    
+    // Bot auto-accept logic
+    if (BOT_HOSTS.includes(party.hostName)) {
+        setTimeout(() => {
+            const updatedParties = parties.map(p => {
+              if (p.id === party.id && !p.members.some(m => m.name === user.name)) {
+                  return { ...p, members: [...p.members, { name: user.name, avatarId: user.avatarId, frameId: user.frameId }] };
+              }
+              return p;
+            });
+            updateParties(updatedParties);
+            setCurrentUserPartyId(party.id);
+            localStorage.setItem('cafe_current_party_id', party.id);
+            setPendingJoinRequests(prev => prev.filter(id => id !== party.id));
+        }, 1500); // Simulate network delay
+        return;
+    }
+
     const newRequest: JoinRequest = {
         id: `req-${Date.now()}`,
         partyId: party.id,
@@ -165,7 +177,6 @@ export default function App() {
     };
     // Simulate host receiving the request.
     setJoinRequests(prev => [...prev, newRequest]);
-    // Auto-move to notifications after a delay
     setTimeout(() => {
         setJoinRequests(prev => prev.filter(r => r.id !== newRequest.id));
         setNotifications(n => [{
@@ -176,11 +187,31 @@ export default function App() {
     }, 8000);
   };
 
+  // Bot ordering simulation
+  useEffect(() => {
+    const botInterval = setInterval(() => {
+        if (currentParty && currentParty.members.some(m => BOT_HOSTS.includes(m.name))) {
+            const bot = currentParty.members.find(m => BOT_HOSTS.includes(m.name));
+            if (bot && Math.random() > 0.6) { // 40% chance to order every 10 seconds
+                const randomItem = MENU_DATA[Math.floor(Math.random() * MENU_DATA.length)];
+                setCart(prev => {
+                    const existing = prev.find(i => i.id === randomItem.id && i.addedBy === bot.name);
+                    if (existing) {
+                        return prev.map(i => i.id === randomItem.id && i.addedBy === bot.name ? { ...i, quantity: i.quantity + 1 } : i);
+                    }
+                    return [...prev, { ...randomItem, quantity: 1, addedBy: bot.name } as CartItem];
+                });
+            }
+        }
+    }, 10000);
+    return () => clearInterval(botInterval);
+  }, [currentParty]);
+
   const handleLeaveParty = () => {
       if(!currentUserPartyId) return;
-      if(currentParty?.hostName === user.name) { // Host leaves, disband party
+      if(currentParty?.hostName === user.name) {
           updateParties(parties.filter(p => p.id !== currentUserPartyId));
-      } else { // Member leaves
+      } else {
           const updatedParties = parties.map(p => {
               if(p.id === currentUserPartyId) {
                   return {...p, members: p.members.filter(m => m.name !== user.name)};
@@ -191,7 +222,7 @@ export default function App() {
       }
       setCurrentUserPartyId(null);
       localStorage.removeItem('cafe_current_party_id');
-      setCart([]); // Clear cart on leaving party
+      setCart([]);
   };
 
   const handleRespondToJoinRequest = (request: JoinRequest, accepted: boolean) => {
@@ -204,8 +235,8 @@ export default function App() {
               return p;
           });
           updateParties(updatedParties);
-          // In real-time, you'd notify the requester they've been accepted.
       }
+      setPendingJoinRequests(prev => prev.filter(id => id !== request.partyId));
   };
 
   const updateManualCafeStatus = (newStatus: ManualCafeStatus) => {
@@ -233,14 +264,12 @@ export default function App() {
   }, [currentTime, manualCafeStatus]);
 
   const isGoFoodOpen = useMemo(() => {
-    if (!isCafeOpen) return false; // GoFood cannot be open if the cafe is closed.
+    if (!isCafeOpen) return false;
     if (manualCafeStatus.gofoodStatus === 'open') return true;
     if (manualCafeStatus.gofoodStatus === 'closed') return false;
-    // Automatic time-based logic for GoFood
     const hours = currentTime.getHours();
     const minutes = currentTime.getMinutes();
     const time = hours + minutes / 60;
-    // GoFood Open from 15:30 (15.5) to 23:30 (23.5)
     return time >= 15.5 && time < 23.5;
   }, [isCafeOpen, currentTime, manualCafeStatus.gofoodStatus]);
 
@@ -488,7 +517,7 @@ export default function App() {
           {page.name === 'staff-settings' && <StaffSettingsPage key="staff-settings" manualCafeStatus={manualCafeStatus} onUpdateCafeStatus={updateManualCafeStatus} productAvailability={productAvailability} onUpdateProductAvailability={updateProductAvailability} />}
           {page.name === 'wall' && <WallPage key="wall" user={user} onLoginClick={() => setIsLoginOpen(true)} isHeaderVisible={isHeaderVisible} isStaffMode={isStaffMode} setPage={handlePageChange} leaderboardData={leaderboardData} wallNotes={wallNotes} onAddNote={handleAddNote} onUpdateNote={handleUpdateNote} onDeleteNote={handleDeleteNote} />}
           {page.name === 'shop' && <ShopPage key="shop" user={user} onRedeemVoucher={() => {}} />}
-          {page.name === 'party' && <PartyPage key="party" user={user} parties={parties} currentParty={currentParty} onCreateParty={handleCreateParty} onJoinPartyRequest={handleJoinPartyRequest} onLeaveParty={handleLeaveParty} />}
+          {page.name === 'party' && <PartyPage key="party" user={user} parties={parties} currentParty={currentParty} onCreateParty={handleCreateParty} onJoinPartyRequest={handleJoinPartyRequest} onLeaveParty={handleLeaveParty} pendingJoinRequests={pendingJoinRequests} />}
           {page.name === 'profile' && <ProfilePage key="profile" profileUser={page.data?.user || user} currentUser={user} onLogout={handleLogout} history={userHistory} onLoginClick={() => setIsLoginOpen(true)} isLoggedIn={isLoggedIn} setPage={handlePageChange} onAddToCart={handleAddToCart} onProductClick={setSelectedProduct} />}
           {page.name === 'edit-profile' && <EditProfilePage key="edit-profile" user={user} onSave={(updatedUser) => { setUser(updatedUser); handlePageChange('profile'); }} onCancel={() => handlePageChange('profile')} />}
           {page.name === 'leaderboard' && <LeaderboardPage key="leaderboard" data={leaderboardData} currentUser={user} setPage={handlePageChange} />}
@@ -508,7 +537,7 @@ export default function App() {
       <BottomNav page={page.name} setPage={(p) => handlePageChange(p)} isLoggedIn={isLoggedIn} onLoginClick={() => setIsLoginOpen(true)} isStaffMode={isStaffMode} onLogout={isStaffMode ? handleStaffExit : handleLogout} onCartClick={() => setIsCartOpen(true)} cartCount={cart.reduce((a,b)=>a+b.quantity,0)} />
 
       <ProductDetailSheet product={selectedProduct} isOpen={!!selectedProduct} onClose={() => setSelectedProduct(null)} isLoggedIn={isLoggedIn} onLogin={() => setIsLoginOpen(true)} onAddToCart={handleAddToCart} onPesanSekarang={(item, qty) => handleInitiateCheckout({ items: [{ ...item, quantity: qty, addedBy: user.name }] })} isCafeOpen={isCafeOpen} isAvailable={selectedProduct ? productAvailability[selectedProduct.id] : false} />
-      <CartSheet isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} cart={cart} updateQuantity={(id, d) => setCart(prev => prev.map(i => i.id === id && i.addedBy === user.name ? { ...i, quantity: Math.max(0, i.quantity + d) } : i).filter(i => i.quantity > 0))} checkout={(notes) => handleInitiateCheckout({ items: cart, notes })} isLoggedIn={isLoggedIn} productAvailability={productAvailability} party={currentParty} user={user} />
+      <CartSheet isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} cart={cart} updateQuantity={(id, d, name) => setCart(prev => prev.map(i => i.id === id && i.addedBy === name ? { ...i, quantity: Math.max(0, i.quantity + d) } : i).filter(i => i.quantity > 0))} checkout={(notes) => handleInitiateCheckout({ items: cart, notes })} isLoggedIn={isLoggedIn} productAvailability={productAvailability} party={currentParty} user={user} />
       
       <PaymentModal isOpen={isPaymentModalOpen} onClose={() => setIsPaymentModalOpen(false)} order={orderToPay} onConfirm={handleConfirmPayment} />
       <ReceiptModal isOpen={isReceiptOpen} onClose={() => setIsReceiptOpen(false)} order={lastCompletedOrder} />

@@ -160,17 +160,18 @@ const WallPage: React.FC<WallPageProps> = ({ user, onLoginClick, isHeaderVisible
 
         const rect = noteElement.getBoundingClientRect();
         
-        // Use fixed positioning relative to the viewport.
-        const menuWidth = 160; // Estimated width of the context menu
+        const menuWidth = 160;
+        const menuHeight = isStaffMode ? 220 : 130; // Dynamic height
         const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
+
         let menuX = rect.left;
-        
-        // Prevent menu from going off-screen to the right
         if (menuX + menuWidth > viewportWidth) {
             menuX = viewportWidth - menuWidth - 8;
         }
 
-        const menuY = rect.bottom + 8; // Position 8px below the note
+        const isNearBottom = rect.bottom > viewportHeight - menuHeight - 20;
+        const menuY = isNearBottom ? rect.top - menuHeight - 8 : rect.bottom + 8;
 
         setContextMenu({ noteId, x: menuX, y: menuY });
         setFocusedNoteId(noteId);

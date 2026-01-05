@@ -11,7 +11,7 @@ interface CartSheetProps {
   isOpen: boolean;
   onClose: () => void;
   cart: CartItem[];
-  updateQuantity: (id: string, delta: number) => void;
+  updateQuantity: (id: string, delta: number, name: string) => void;
   checkout: (notes: string) => void;
   isLoggedIn: boolean;
   productAvailability: Record<string, boolean>;
@@ -57,11 +57,11 @@ const CartSheet: React.FC<CartSheetProps> = ({ isOpen, onClose, cart, updateQuan
           </div>
           {canEdit ? (
             <div className="flex items-center gap-3 bg-slate-50 p-1 rounded-xl border border-slate-100">
-              <button onClick={() => updateQuantity(item.id, -1)} className="w-7 h-7 rounded-lg bg-white flex items-center justify-center text-slate-700 shadow-sm border border-slate-100 active:scale-90 transition-transform">
+              <button onClick={() => updateQuantity(item.id, -1, item.addedBy)} className="w-7 h-7 rounded-lg bg-white flex items-center justify-center text-slate-700 shadow-sm border border-slate-100 active:scale-90 transition-transform">
                 <Trash2 size={14} className="text-red-500" />
               </button>
               <span className="font-bold text-sm min-w-[20px] text-center">{item.quantity}</span>
-              <button onClick={() => updateQuantity(item.id, 1)} className={`w-7 h-7 rounded-lg flex items-center justify-center text-white shadow-sm active:scale-90 transition-transform ${isAvailable ? 'bg-[#1b4332]' : 'bg-slate-300'}`} disabled={!isAvailable}><Plus size={14} /></button>
+              <button onClick={() => updateQuantity(item.id, 1, item.addedBy)} className={`w-7 h-7 rounded-lg flex items-center justify-center text-white shadow-sm active:scale-90 transition-transform ${isAvailable ? 'bg-[#1b4332]' : 'bg-slate-300'}`} disabled={!isAvailable}><Plus size={14} /></button>
             </div>
           ) : (
              <div className="font-bold text-sm min-w-[20px] text-center px-4">x{item.quantity}</div>
@@ -95,7 +95,7 @@ const CartSheet: React.FC<CartSheetProps> = ({ isOpen, onClose, cart, updateQuan
               <h2 className="text-xl font-bold text-[#1b4332] flex items-center gap-2">{party ? <><Users size={20}/> Keranjang Bersama</> : 'Keranjang Saya'}</h2>
               <button onClick={onClose} className="p-2 rounded-full bg-slate-100 text-slate-500 active:scale-90"><X size={20} /></button>
             </div>
-            <div className="flex-grow overflow-y-auto px-6 pb-40 no-scrollbar pt-2">
+            <div className="flex-grow overflow-y-auto px-6 pb-48 no-scrollbar pt-2">
               {cart.length === 0 ? (
                 <div className="text-center py-20 flex flex-col items-center">
                   <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mb-4 text-slate-300"><ShoppingCart size={32} /></div>
@@ -104,8 +104,6 @@ const CartSheet: React.FC<CartSheetProps> = ({ isOpen, onClose, cart, updateQuan
                 </div>
               ) : (
                 <div className="space-y-4 mt-2">
-                  {/* FIX: Replaced Object.entries with Object.keys to fix TypeScript type inference issues.
-                      This ensures 'items' is correctly typed as CartItem[], resolving errors on '.reduce' and 'renderCartItems'. */}
                   {party && cartGroupedByUser ? (
                     Object.keys(cartGroupedByUser).map(memberName => {
                       const items = cartGroupedByUser[memberName];

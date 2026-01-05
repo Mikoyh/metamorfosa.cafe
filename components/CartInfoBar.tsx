@@ -21,7 +21,7 @@ const CartInfoBar: React.FC<CartInfoBarProps> = ({ cart, onOpenCart }) => {
       animate={{ y: 0, opacity: 1 }}
       exit={{ y: 50, opacity: 0 }}
       onClick={onOpenCart}
-      className="fixed bottom-[84px] left-4 right-4 z-[480] cursor-pointer"
+      className="fixed bottom-[98px] left-4 right-4 z-[480] cursor-pointer max-w-[calc(100%-2rem)] mx-auto"
     >
         <div className="bg-[#1b4332] text-white rounded-2xl p-4 flex items-center justify-between shadow-2xl shadow-green-900/40 border border-white/10 backdrop-blur-md">
             <div className="flex items-center gap-3">
