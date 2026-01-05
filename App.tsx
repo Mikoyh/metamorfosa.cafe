@@ -2,8 +2,8 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { AnimatePresence, useScroll, useMotionValueEvent, motion } from 'framer-motion';
 
-import { MenuItem, CartItem, User, Page, ActiveOrder, AppNotification, WallNote, ManualCafeStatus, Party, PartyMember, JoinRequest } from './types';
-import { MENU_DATA, XP_FOR_LEVEL, NPC_NOTE_SAMPLES, PASTEL_COLORS, AVATARS, PROFILE_BANNERS, NPC_RATING_NOTE_SAMPLES } from './constants';
+import { MenuItem, CartItem, User, Page, ActiveOrder, AppNotification, WallNote, ManualCafeStatus, Party, PartyMember, JoinRequest, Voucher } from './types';
+import { MENU_DATA, XP_FOR_LEVEL, NPC_NOTE_SAMPLES, PASTEL_COLORS, AVATARS, PROFILE_BANNERS, NPC_RATING_NOTE_SAMPLES, VOUCHER_DATA } from './constants';
 
 // Components
 import Header from './components/Header';
@@ -463,6 +463,20 @@ export default function App() {
   
   const handleLogin = (email: string, pass: string) => {
     const mockUsername = email.split('@')[0];
+
+    const updatedCart = cart.map(item =>
+        item.addedBy === '' || item.addedBy === 'Guest' ? { ...item, addedBy: mockUsername } : item
+    ).reduce((acc, current) => {
+        const existingItem = acc.find(item => item.id === current.id && item.addedBy === current.addedBy);
+        if (existingItem) {
+            existingItem.quantity += current.quantity;
+        } else {
+            acc.push(current);
+        }
+        return acc;
+    }, [] as CartItem[]);
+    setCart(updatedCart);
+
     setUser({ name: mockUsername, email: email, xp: 100, gold: 50, level: 1, role: 'Regular', vouchers: [], favorites: [], avatarId: 'default', bannerId: 'pattern-14', frameId: 'default' });
     setIsLoggedIn(true); setIsLoginOpen(false);
   };
@@ -488,6 +502,25 @@ export default function App() {
       if (comment.trim()) { const starEmoji = '⭐'.repeat(stars); handleAddNote({ text: `${comment} ${starEmoji}`, author: user.name, color: PASTEL_COLORS[Math.floor(Math.random() * PASTEL_COLORS.length)], isNpc: false }); }
   };
 
+  const handleRedeemVoucher = (voucher: Voucher) => {
+      // FIX: Corrected undefined function call to state setter to open the login modal.
+      if (!isLoggedIn) { setIsLoginOpen(true); return; }
+      if (user.gold < voucher.costInGold) { alert("Gold tidak cukup!"); return; }
+      if (user.vouchers.some(v => v.id === voucher.id)) { alert("Voucher sudah dimiliki!"); return; }
+      
+      setUser(prev => ({
+          ...prev,
+          gold: prev.gold - voucher.costInGold,
+          vouchers: [...prev.vouchers, voucher]
+      }));
+
+      setNotifications(n => [{
+          id: `voucher-${voucher.id}`, type: 'SYSTEM', title: 'Voucher Diambil!',
+          message: `Kamu berhasil menukarkan ${voucher.costInGold} gold untuk "${voucher.title}".`,
+          read: false, timestamp: Date.now()
+      }, ...n]);
+  };
+
   const isBirthday = useMemo(() => {
     if (!user.birthday) return false;
     const today = new Date(); const [year, month, day] = user.birthday.split('-').map(Number);
@@ -511,17 +544,17 @@ export default function App() {
 
       <main className="flex-grow">
         <AnimatePresence mode="wait">
-          {page.name === 'home' && <HomePage key="home" setPage={handlePageChange} user={user} isLoggedIn={isLoggedIn} onLoginClick={() => setIsLoginOpen(true)} userOrder={allActiveOrders.find(o => !o.isNpc && o.user.name === user.name)} allActiveOrders={allActiveOrders} leaderboard={leaderboardData.slice(0, 5)} userHistory={userHistory} onAddToCart={handleAddToCart} onProductClick={setSelectedProduct} wallNotes={wallNotes} isBirthday={isBirthday} isCafeOpen={isCafeOpen} isGoFoodOpen={isGoFoodOpen} currentTime={currentTime} party={currentParty} />}
+          {page.name === 'home' && <HomePage key="home" setPage={handlePageChange} user={user} isLoggedIn={isLoggedIn} onLoginClick={() => setIsLoginOpen(true)} userOrder={allActiveOrders.find(o => !o.isNpc && o.user.name === user.name)} allActiveOrders={allActiveOrders} leaderboard={leaderboardData.slice(0, 5)} userHistory={userHistory} onAddToCart={handleAddToCart} onProductClick={setSelectedProduct} wallNotes={wallNotes} isBirthday={isBirthday} isCafeOpen={isCafeOpen} isGoFoodOpen={isGoFoodOpen} currentTime={currentTime} party={currentParty} availableVouchers={VOUCHER_DATA} />}
           {page.name === 'menu' && <MenuPage key="menu" onProductClick={setSelectedProduct} onAddToCart={handleAddToCart} isHeaderVisible={isHeaderVisible} favorites={user.favorites} toggleFavorite={toggleFavorite} menuOptions={page.data} isCafeOpen={isCafeOpen} productAvailability={productAvailability} />}
           {page.name === 'staff' && <StaffPage key="staff" activeOrders={allActiveOrders} onMarkReady={handleMarkReady} />}
           {page.name === 'staff-settings' && <StaffSettingsPage key="staff-settings" manualCafeStatus={manualCafeStatus} onUpdateCafeStatus={updateManualCafeStatus} productAvailability={productAvailability} onUpdateProductAvailability={updateProductAvailability} />}
           {page.name === 'wall' && <WallPage key="wall" user={user} onLoginClick={() => setIsLoginOpen(true)} isHeaderVisible={isHeaderVisible} isStaffMode={isStaffMode} setPage={handlePageChange} leaderboardData={leaderboardData} wallNotes={wallNotes} onAddNote={handleAddNote} onUpdateNote={handleUpdateNote} onDeleteNote={handleDeleteNote} />}
-          {page.name === 'shop' && <ShopPage key="shop" user={user} onRedeemVoucher={() => {}} />}
+          {page.name === 'shop' && <ShopPage key="shop" user={user} onRedeemVoucher={handleRedeemVoucher} />}
           {page.name === 'party' && <PartyPage key="party" user={user} parties={parties} currentParty={currentParty} onCreateParty={handleCreateParty} onJoinPartyRequest={handleJoinPartyRequest} onLeaveParty={handleLeaveParty} pendingJoinRequests={pendingJoinRequests} />}
           {page.name === 'profile' && <ProfilePage key="profile" profileUser={page.data?.user || user} currentUser={user} onLogout={handleLogout} history={userHistory} onLoginClick={() => setIsLoginOpen(true)} isLoggedIn={isLoggedIn} setPage={handlePageChange} onAddToCart={handleAddToCart} onProductClick={setSelectedProduct} />}
           {page.name === 'edit-profile' && <EditProfilePage key="edit-profile" user={user} onSave={(updatedUser) => { setUser(updatedUser); handlePageChange('profile'); }} onCancel={() => handlePageChange('profile')} />}
           {page.name === 'leaderboard' && <LeaderboardPage key="leaderboard" data={leaderboardData} currentUser={user} setPage={handlePageChange} />}
-          {page.name === 'voucher-promo' && <VoucherPromoPage key="vouchers" />}
+          {page.name === 'voucher-promo' && <VoucherPromoPage key="vouchers" user={user} setPage={handlePageChange} onRedeemVoucher={handleRedeemVoucher} />}
           {page.name === 'queue-history' && <QueueHistoryPage key="queue" activeOrders={allActiveOrders} historyOrders={historyOrders} user={user} setPage={handlePageChange} leaderboardData={leaderboardData} isCafeOpen={isCafeOpen} />}
         </AnimatePresence>
       </main>

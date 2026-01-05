@@ -107,7 +107,20 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ profileUser, currentUser, onL
         {isOwnProfile && profileUser.vouchers.length > 0 && (
              <section>
                 <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Voucher Saya</h3>
-                {/* Voucher display logic here */}
+                <div className="space-y-3">
+                    {profileUser.vouchers.map(voucher => (
+                        <div key={voucher.id} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                               <div className="w-10 h-10 flex items-center justify-center bg-green-50 text-green-600 rounded-xl"><Ticket size={20} /></div>
+                               <div>
+                                   <h4 className="font-bold text-slate-800 text-sm">{voucher.title}</h4>
+                                   <p className="text-xs text-slate-500">{voucher.description}</p>
+                               </div>
+                            </div>
+                            <button className="bg-green-100 text-green-700 text-xs font-bold px-4 py-2 rounded-lg">Gunakan</button>
+                        </div>
+                    ))}
+                </div>
              </section>
         )}
         

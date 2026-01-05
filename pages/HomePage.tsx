@@ -1,8 +1,8 @@
 
 import React, { useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { User as UserIcon, Users, Trophy, Star, Phone, Instagram, Clock, Truck, ShoppingBasket, ShoppingBag, Heart, Zap, Search, XCircle } from 'lucide-react';
-import { User, Page, ActiveOrder, MenuItem, WallNote, Party } from '../types';
+import { User as UserIcon, Users, Trophy, Star, Phone, Instagram, Clock, Truck, ShoppingBasket, ShoppingBag, Heart, Zap, Search, XCircle, Ticket } from 'lucide-react';
+import { User, Page, ActiveOrder, MenuItem, WallNote, Party, Voucher } from '../types';
 import { XP_FOR_LEVEL, FACILITIES_DATA, MENU_DATA, LOGO, PROFILE_BANNERS } from '../constants';
 import WallTicker from '../components/WallTicker';
 import Avatar from '../components/Avatar';
@@ -26,9 +26,10 @@ interface HomePageProps {
   isGoFoodOpen: boolean;
   currentTime: Date;
   party: Party | undefined;
+  availableVouchers: Voucher[];
 }
 
-const HomePage: React.FC<HomePageProps> = ({ setPage, user, isLoggedIn, onLoginClick, userOrder, allActiveOrders, leaderboard, userHistory, onAddToCart, onProductClick, wallNotes, isBirthday, isCafeOpen, isGoFoodOpen, currentTime, party }) => {
+const HomePage: React.FC<HomePageProps> = ({ setPage, user, isLoggedIn, onLoginClick, userOrder, allActiveOrders, leaderboard, userHistory, onAddToCart, onProductClick, wallNotes, isBirthday, isCafeOpen, isGoFoodOpen, currentTime, party, availableVouchers }) => {
   const xpProgress = user.level < XP_FOR_LEVEL.length ? (user.xp / XP_FOR_LEVEL[user.level]) * 100 : 100;
 
   const getGreeting = useMemo(() => {
@@ -61,6 +62,8 @@ const HomePage: React.FC<HomePageProps> = ({ setPage, user, isLoggedIn, onLoginC
     const [year, month, day] = birthday.split('-').map(Number);
     return today.getMonth() === month - 1 && today.getDate() === day;
   };
+
+  const vouchersToShow = availableVouchers.filter(v => !user.vouchers.some(uv => uv.id === v.id)).slice(0,2);
 
   return (
     <div className="pb-36 pt-20 px-4 space-y-6 bg-slate-50/50">
@@ -303,6 +306,29 @@ const HomePage: React.FC<HomePageProps> = ({ setPage, user, isLoggedIn, onLoginC
             ))}
         </div>
       </section>
+
+      {isLoggedIn && vouchersToShow.length > 0 && (
+          <section>
+             <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-4 px-2">Klaim Voucher</h3>
+             <div className="space-y-3">
+                {vouchersToShow.map(voucher => (
+                    <div key={voucher.id} onClick={() => setPage('voucher-promo')} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex items-center justify-between active:scale-95 transition-transform cursor-pointer">
+                        <div className="flex items-center gap-4">
+                            <div className="w-10 h-10 flex items-center justify-center bg-amber-100 text-amber-600 rounded-xl"><Ticket size={20} /></div>
+                            <div>
+                                <h4 className="font-bold text-slate-800 text-sm">{voucher.title}</h4>
+                                <p className="text-xs text-slate-500">{voucher.description}</p>
+                            </div>
+                        </div>
+                         <div className="flex items-center gap-1.5 text-xs font-bold text-amber-700 bg-amber-100 px-3 py-1.5 rounded-lg">
+                            <Trophy size={12} />
+                            <span>{voucher.costInGold}</span>
+                         </div>
+                    </div>
+                ))}
+             </div>
+          </section>
+      )}
 
       <section>
         <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-4 px-2">Kunjungi Kafe</h3>
